@@ -1,0 +1,5 @@
+packages:
+  - chaewoon-front
+  - chaewoon-backend
+
+onlyBuiltDependencies: '@nestjs/core,@prisma/client,@prisma/engines,esbuild,prisma'
