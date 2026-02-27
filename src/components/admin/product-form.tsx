@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Plus, X, ChevronUp, ChevronDown, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Product } from "@/types";
@@ -21,6 +22,8 @@ export function ProductForm({ product }: ProductFormProps) {
     description: product?.description ?? "",
     price: product?.price ?? 0,
     tags: product?.tags.join(", ") ?? "",
+    thumbnail: product?.thumbnail ?? "",
+    bodyImages: product?.bodyImages ?? [] as string[],
     featured: product?.featured ?? false,
     published: product?.published ?? false,
   });
@@ -46,12 +49,16 @@ export function ProductForm({ product }: ProductFormProps) {
       .map((t) => t.trim())
       .filter(Boolean);
 
+    const bodyImages = form.bodyImages.filter((url) => url.trim() !== "");
+
     if (isEdit && product) {
       updateProduct(product.id, {
         name: form.name,
         description: form.description,
         price: form.price,
         tags,
+        thumbnail: form.thumbnail.trim(),
+        bodyImages,
         featured: form.featured,
         published: form.published,
       });
@@ -60,7 +67,8 @@ export function ProductForm({ product }: ProductFormProps) {
         name: form.name,
         description: form.description,
         price: form.price,
-        images: [],
+        thumbnail: form.thumbnail.trim(),
+        bodyImages,
         tags,
         sold: false,
         featured: form.featured,
@@ -133,6 +141,129 @@ export function ProductForm({ product }: ProductFormProps) {
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
             />
           </div>
+        </div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <h2 className="mb-4 font-bold">이미지 관리</h2>
+        <div className="space-y-4">
+          {/* Thumbnail */}
+          <div>
+            <label className="mb-1.5 block text-sm text-muted">
+              썸네일 이미지 URL
+            </label>
+            <Input
+              placeholder="https://example.com/thumbnail.jpg"
+              value={form.thumbnail}
+              onChange={(e) => setForm({ ...form, thumbnail: e.target.value })}
+            />
+            {form.thumbnail.trim() && (
+              <div className="mt-2 overflow-hidden rounded-lg border border-border">
+                <img
+                  src={form.thumbnail}
+                  alt="썸네일 미리보기"
+                  className="h-40 w-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Body Images */}
+          <div>
+            <label className="mb-1.5 block text-sm text-muted">
+              본문 이미지 URL ({form.bodyImages.length}장)
+            </label>
+            <div className="space-y-2">
+              {form.bodyImages.map((url, idx) => (
+                <div key={idx} className="flex items-start gap-2">
+                  <span className="mt-2.5 text-xs text-muted">{idx + 1}</span>
+                  <div className="flex-1">
+                    <Input
+                      placeholder="https://example.com/image.jpg"
+                      value={url}
+                      onChange={(e) => {
+                        const next = [...form.bodyImages];
+                        next[idx] = e.target.value;
+                        setForm({ ...form, bodyImages: next });
+                      }}
+                    />
+                    {url.trim() && (
+                      <div className="mt-1 overflow-hidden rounded-lg border border-border">
+                        <img
+                          src={url}
+                          alt={`본문 이미지 ${idx + 1}`}
+                          className="h-28 w-full object-cover"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = "none";
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-0.5">
+                    <button
+                      type="button"
+                      disabled={idx === 0}
+                      onClick={() => {
+                        const next = [...form.bodyImages];
+                        [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                        setForm({ ...form, bodyImages: next });
+                      }}
+                      className="rounded p-1 text-muted transition-colors hover:text-white disabled:opacity-30"
+                    >
+                      <ChevronUp className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      disabled={idx === form.bodyImages.length - 1}
+                      onClick={() => {
+                        const next = [...form.bodyImages];
+                        [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                        setForm({ ...form, bodyImages: next });
+                      }}
+                      className="rounded p-1 text-muted transition-colors hover:text-white disabled:opacity-30"
+                    >
+                      <ChevronDown className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setForm({
+                        ...form,
+                        bodyImages: form.bodyImages.filter((_, i) => i !== idx),
+                      });
+                    }}
+                    className="mt-2 rounded p-1 text-muted transition-colors hover:text-red-400"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                setForm({ ...form, bodyImages: [...form.bodyImages, ""] })
+              }
+              className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-white"
+            >
+              <Plus className="h-4 w-4" />
+              이미지 추가
+            </button>
+          </div>
+
+          {form.thumbnail === "" && form.bodyImages.length === 0 && (
+            <div className="flex items-center gap-2 rounded-lg bg-neutral-900/50 px-3 py-2">
+              <ImageIcon className="h-4 w-4 text-muted" />
+              <p className="text-xs text-muted">
+                이미지가 없으면 기본 플레이스홀더가 표시됩니다.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

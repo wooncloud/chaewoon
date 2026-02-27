@@ -3,7 +3,8 @@ export interface Product {
   name: string;
   description: string;
   price: number;
-  images: string[];
+  thumbnail: string;
+  bodyImages: string[];
   tags: string[];
   sold: boolean;
   featured: boolean;

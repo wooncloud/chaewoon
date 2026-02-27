@@ -69,11 +69,19 @@ export default function WishlistPage() {
                   href={isDeleted ? "#" : `/products/${wishItem.id}`}
                   className="product-image-placeholder h-20 w-20 shrink-0 overflow-hidden rounded-lg"
                 >
-                  <div className="flex h-full items-center justify-center">
-                    <span className="pearl-text text-lg font-bold opacity-30">
-                      彩
-                    </span>
-                  </div>
+                  {wishItem.thumbnail ? (
+                    <img
+                      src={wishItem.thumbnail}
+                      alt={wishItem.name}
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center">
+                      <span className="pearl-text text-lg font-bold opacity-30">
+                        彩
+                      </span>
+                    </div>
+                  )}
                 </Link>
 
                 <div className="flex flex-1 flex-col">

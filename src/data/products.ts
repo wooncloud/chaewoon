@@ -7,7 +7,8 @@ export const products: Product[] = [
     description:
       "나비 한 쌍이 자개 위에서 날아오르는 모습을 담았습니다. 빛의 각도에 따라 날개의 무지개빛이 달라지는, 세상에 단 하나뿐인 작품입니다.",
     price: 38000,
-    images: [],
+    thumbnail: "",
+    bodyImages: [],
     tags: ["나비", "선물추천"],
     sold: true,
     featured: false,
@@ -20,7 +21,8 @@ export const products: Product[] = [
     description:
       "흩날리는 벚꽃잎을 자개로 한 잎 한 잎 세공한 키링입니다. 봄의 설렘을 가방에 달아보세요. 은은한 분홍빛이 감도는 영롱한 작품.",
     price: 42000,
-    images: [],
+    thumbnail: "",
+    bodyImages: [],
     tags: ["벚꽃", "봄"],
     sold: true,
     featured: false,
@@ -33,7 +35,8 @@ export const products: Product[] = [
     description:
       "초승달과 별을 자개로 표현한 몽환적인 키링입니다. 어두운 곳에서 자개 특유의 은은한 빛이 더욱 돋보입니다. 밤하늘을 품은 작품.",
     price: 45000,
-    images: [],
+    thumbnail: "",
+    bodyImages: [],
     tags: ["달", "별", "선물추천"],
     sold: false,
     featured: true,
@@ -46,7 +49,8 @@ export const products: Product[] = [
     description:
       "우아하게 날아오르는 학의 모습을 자개로 세밀하게 표현했습니다. 한국 전통미의 정수를 담은 격조 높은 키링. 장수와 행운의 의미를 함께 선물하세요.",
     price: 48000,
-    images: [],
+    thumbnail: "",
+    bodyImages: [],
     tags: ["학", "전통", "프리미엄"],
     sold: false,
     featured: true,
@@ -59,7 +63,8 @@ export const products: Product[] = [
     description:
       "겨울을 이기고 피어나는 매화를 자개로 담았습니다. 꽃잎 하나하나에 정성을 담아 세공한 작품. 가방에 봄의 기운을 더해줍니다.",
     price: 40000,
-    images: [],
+    thumbnail: "",
+    bodyImages: [],
     tags: ["매화", "꽃"],
     sold: false,
     featured: true,
@@ -72,7 +77,8 @@ export const products: Product[] = [
     description:
       "일렁이는 파도의 움직임을 자개의 곡선으로 표현한 키링입니다. 청록빛 자개가 바다의 깊은 색을 닮았습니다. 바다를 좋아하는 분께 추천.",
     price: 43000,
-    images: [],
+    thumbnail: "",
+    bodyImages: [],
     tags: ["파도", "바다"],
     sold: false,
     featured: false,
@@ -85,7 +91,8 @@ export const products: Product[] = [
     description:
       "힘차게 승천하는 용의 모습을 자개로 조각한 프리미엄 키링입니다. 정교한 비늘 표현이 일품이며, 빛에 따라 금빛과 청빛이 교차합니다.",
     price: 55000,
-    images: [],
+    thumbnail: "",
+    bodyImages: [],
     tags: ["용", "프리미엄"],
     sold: false,
     featured: true,
@@ -98,7 +105,8 @@ export const products: Product[] = [
     description:
       "고요한 수면 위에 피어난 연꽃을 자개로 표현한 키링입니다. 순수와 평화의 상징을 일상에 담아보세요. 자개의 영롱함이 극대화된 작품.",
     price: 44000,
-    images: [],
+    thumbnail: "",
+    bodyImages: [],
     tags: ["연꽃", "선물추천"],
     sold: false,
     featured: false,

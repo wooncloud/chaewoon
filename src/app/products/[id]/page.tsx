@@ -64,11 +64,19 @@ export default function ProductDetailPage({
           transition={{ duration: 0.4 }}
         >
           <div className="product-image-placeholder aspect-square overflow-hidden rounded-2xl border border-border">
-            <div className="flex h-full items-center justify-center">
-              <span className="pearl-text text-8xl font-bold opacity-20">
-                彩
-              </span>
-            </div>
+            {product.thumbnail ? (
+              <img
+                src={product.thumbnail}
+                alt={product.name}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full items-center justify-center">
+                <span className="pearl-text text-8xl font-bold opacity-20">
+                  彩
+                </span>
+              </div>
+            )}
           </div>
         </motion.div>
 
@@ -149,6 +157,36 @@ export default function ProductDetailPage({
           </div>
         </motion.div>
       </div>
+
+      {/* Body Images Gallery */}
+      {product.bodyImages.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="mt-12"
+        >
+          <h2 className="mb-6 text-lg font-bold">작품 상세</h2>
+          <div className="space-y-4">
+            {product.bodyImages.map((src, idx) => (
+              <motion.div
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.4, delay: idx * 0.1 }}
+                className="overflow-hidden rounded-2xl border border-border"
+              >
+                <img
+                  src={src}
+                  alt={`${product.name} 상세 이미지 ${idx + 1}`}
+                  className="w-full"
+                />
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
+      )}
     </div>
   );
 }

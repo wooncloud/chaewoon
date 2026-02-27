@@ -28,9 +28,17 @@ export function ProductCard({ product }: ProductCardProps) {
     <div className="group rounded-xl border border-border bg-card transition-all duration-300 hover:border-white/20 hover:bg-card-hover">
       <Link href={`/products/${product.id}`}>
         <div className="product-image-placeholder relative aspect-square overflow-hidden rounded-t-xl">
-          <div className="flex h-full items-center justify-center">
-            <span className="pearl-text text-4xl font-bold opacity-30">彩</span>
-          </div>
+          {product.thumbnail ? (
+            <img
+              src={product.thumbnail}
+              alt={product.name}
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center">
+              <span className="pearl-text text-4xl font-bold opacity-30">彩</span>
+            </div>
+          )}
           {product.sold && (
             <div className="absolute inset-0 flex items-center justify-center bg-black/60">
               <span className="text-sm font-medium text-white">SOLD</span>

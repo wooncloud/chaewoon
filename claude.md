@@ -57,7 +57,7 @@ src/
 ├── store/
 │   ├── wishlist.ts           # Zustand 위시리스트 스토어
 │   └── admin.ts              # Zustand Admin 스토어 (작품/쿠폰/주문 CRUD, markAsSold)
-├── types/index.ts            # TypeScript 타입 정의 (Product.sold, OrderItem)
+├── types/index.ts            # TypeScript 타입 정의 (Product.thumbnail/bodyImages, OrderItem)
 └── data/
     ├── products.ts           # Mock 작품 (8개, 자개 공예)
     ├── coupons.ts            # Mock 쿠폰 (3개) + 검증/할인 계산 로직
@@ -69,7 +69,7 @@ src/
 ### Phase 1: Customer Site (MVP) ✅
 1. **메인 페이지**: Hero 섹션(자개 그라데이션), 추천 작품, 브랜드 스토리
 2. **작품 목록**: 반응형 그리드 (모바일 1컬럼 / PC 다중 컬럼), 카테고리 없음
-3. **작품 상세**: 이미지, 상세 설명, 바로 구매 버튼, 위시리스트 토글, 품절 표시
+3. **작품 상세**: 썸네일 + 본문 이미지 갤러리(스크롤), 바로 구매 버튼, 위시리스트 토글, 품절 표시
 4. **위시리스트**: 찜한 작품 목록, 실시간 품절/삭제 상태 반영, 바로 구매 링크
 5. **쿠폰 시스템**: 정률/정액 할인, 최소 주문 금액, 최대 할인 한도, 유효 기간 검증
 6. **주문/결제**: 쿼리 파라미터 기반 직접 구매, 쿠폰 적용, 배송 정보 입력, 품절 재검증
@@ -79,7 +79,7 @@ src/
 1. **Admin 레이아웃**: 전용 사이드바(모바일 반응형), 고객 사이트 Header/Footer 분리 (ClientLayout)
 2. **대시보드 홈**: 매출/주문/작품/쿠폰 통계 카드 + 판매 현황 (판매 가능/판매 완료)
 3. **작품 관리**: 검색(작품명/태그), 판매 상태 필터, 게시 상태 필터, 테이블 뷰
-4. **작품 CRUD**: 등록/수정 공통 폼(ProductForm), 삭제(확인 단계 포함)
+4. **작품 CRUD**: 등록/수정 공통 폼(ProductForm, 썸네일/본문 이미지 URL 관리), 삭제(확인 단계 포함)
 5. **게시 관리**: 게시/비공개 토글, 추천 작품 토글 (목록에서 즉시 전환)
 6. **쿠폰 관리**: CRUD, 활성/비활성 토글, 인라인 등록/수정 폼
 
@@ -158,3 +158,6 @@ src/
 - 주문 상태 상수(라벨/색상/HEX) 중앙화 (src/lib/constants.ts)
 - 결제 시 `getProductById`로 품절 재검증 후 `markAsSold` 호출 (race condition 방지)
 - 위시리스트에서 관리자 삭제된 작품은 "삭제된 작품"으로 표시 (graceful degradation)
+- **이미지 2종 타입**: `thumbnail` (카드/목록용) + `bodyImages` (상세 페이지 스크롤 갤러리)
+- 이미지 없는 상품은 "彩" 플레이스홀더로 폴백 (기능 회귀 없음)
+- Admin 폼에서 이미지 URL 입력, 순서 변경(↑↓), 추가/삭제 가능
