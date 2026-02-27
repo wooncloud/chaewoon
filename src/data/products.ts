@@ -12,6 +12,7 @@ export const products: Product[] = [
     tags: ["브로치", "나비", "선물추천"],
     stock: 15,
     featured: true,
+    published: true,
     createdAt: "2025-01-15",
   },
   {
@@ -25,6 +26,7 @@ export const products: Product[] = [
     tags: ["손거울", "연꽃", "선물추천"],
     stock: 20,
     featured: true,
+    published: true,
     createdAt: "2025-02-01",
   },
   {
@@ -38,6 +40,7 @@ export const products: Product[] = [
     tags: ["보석함", "학", "프리미엄"],
     stock: 5,
     featured: true,
+    published: true,
     createdAt: "2025-02-10",
   },
   {
@@ -51,6 +54,7 @@ export const products: Product[] = [
     tags: ["명함지갑", "매화", "비즈니스"],
     stock: 12,
     featured: false,
+    published: true,
     createdAt: "2025-03-01",
   },
   {
@@ -64,6 +68,7 @@ export const products: Product[] = [
     tags: ["귀걸이", "달빛", "실버"],
     stock: 25,
     featured: true,
+    published: true,
     createdAt: "2025-03-15",
   },
   {
@@ -77,6 +82,7 @@ export const products: Product[] = [
     tags: ["액자", "산수화", "인테리어"],
     stock: 3,
     featured: false,
+    published: true,
     createdAt: "2025-04-01",
   },
   {
@@ -90,6 +96,7 @@ export const products: Product[] = [
     tags: ["코스터", "벚꽃", "세트"],
     stock: 10,
     featured: false,
+    published: true,
     createdAt: "2025-04-15",
   },
   {
@@ -103,6 +110,7 @@ export const products: Product[] = [
     tags: ["만년필", "용", "프리미엄"],
     stock: 7,
     featured: true,
+    published: true,
     createdAt: "2025-05-01",
   },
 ];
@@ -112,9 +120,9 @@ export function getProductById(id: string): Product | undefined {
 }
 
 export function getFeaturedProducts(): Product[] {
-  return products.filter((p) => p.featured);
+  return products.filter((p) => p.featured && p.published);
 }
 
 export function getProductsByCategory(category: string): Product[] {
-  return products.filter((p) => p.category === category);
+  return products.filter((p) => p.category === category && p.published);
 }

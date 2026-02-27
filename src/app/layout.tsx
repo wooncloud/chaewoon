@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
+import { ClientLayout } from "@/components/layout/client-layout";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,9 +16,7 @@ export default function RootLayout({
   return (
     <html lang="ko">
       <body className="antialiased">
-        <Header />
-        <main className="min-h-screen">{children}</main>
-        <Footer />
+        <ClientLayout>{children}</ClientLayout>
       </body>
     </html>
   );

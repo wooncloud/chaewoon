@@ -8,6 +8,7 @@ export interface Product {
   tags: string[];
   stock: number;
   featured: boolean;
+  published: boolean;
   createdAt: string;
 }
 

@@ -11,9 +11,10 @@ function ProductListContent() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category") as ProductCategory | null;
 
+  const published = products.filter((p) => p.published);
   const filtered = category
-    ? products.filter((p) => p.category === category)
-    : products;
+    ? published.filter((p) => p.category === category)
+    : published;
 
   const categories = Object.entries(CATEGORY_LABELS) as [
     ProductCategory,
