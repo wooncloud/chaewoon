@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -16,14 +16,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAdminStore } from "@/store/admin";
 import { formatPrice } from "@/lib/utils";
-import { CATEGORY_LABELS, ProductCategory } from "@/types";
+import { useIsMounted } from "@/lib/hooks";
 
 export default function AdminProductsPage() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const [search, setSearch] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState<
-    ProductCategory | "all"
-  >("all");
+  const [soldFilter, setSoldFilter] = useState<"all" | "available" | "sold">(
+    "all"
+  );
   const [publishedFilter, setPublishedFilter] = useState<
     "all" | "published" | "draft"
   >("all");
@@ -36,28 +36,24 @@ export default function AdminProductsPage() {
     deleteProduct,
   } = useAdminStore();
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   if (!mounted) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
   }
 
   const filtered = getProductsByFilter({
     search,
-    category: categoryFilter,
+    sold: soldFilter,
     published: publishedFilter,
   });
 
   return (
     <div>
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-2xl font-bold">상품 관리</h1>
+        <h1 className="text-2xl font-bold">작품 관리</h1>
         <Link href="/admin/products/new">
           <Button>
             <Plus className="mr-2 h-4 w-4" />
-            상품 등록
+            작품 등록
           </Button>
         </Link>
       </div>
@@ -67,25 +63,22 @@ export default function AdminProductsPage() {
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" />
           <Input
-            placeholder="상품명 또는 태그 검색..."
+            placeholder="작품명 또는 태그 검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-10"
           />
         </div>
         <select
-          value={categoryFilter}
+          value={soldFilter}
           onChange={(e) =>
-            setCategoryFilter(e.target.value as ProductCategory | "all")
+            setSoldFilter(e.target.value as "all" | "available" | "sold")
           }
           className="h-11 rounded-lg border border-neutral-700 bg-neutral-900/50 px-3 text-sm text-white focus:border-purple-400/50 focus:outline-none"
         >
-          <option value="all">전체 카테고리</option>
-          {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-            <option key={key} value={key}>
-              {label}
-            </option>
-          ))}
+          <option value="all">전체 판매 상태</option>
+          <option value="available">판매 가능</option>
+          <option value="sold">판매 완료</option>
         </select>
         <select
           value={publishedFilter}
@@ -94,13 +87,13 @@ export default function AdminProductsPage() {
           }
           className="h-11 rounded-lg border border-neutral-700 bg-neutral-900/50 px-3 text-sm text-white focus:border-purple-400/50 focus:outline-none"
         >
-          <option value="all">전체 상태</option>
+          <option value="all">전체 게시 상태</option>
           <option value="published">게시 중</option>
           <option value="draft">비공개</option>
         </select>
       </div>
 
-      <div className="text-xs text-muted mb-3">{filtered.length}개의 상품</div>
+      <div className="text-xs text-muted mb-3">{filtered.length}개의 작품</div>
 
       {/* Product Table */}
       <div className="overflow-x-auto rounded-xl border border-border">
@@ -108,16 +101,13 @@ export default function AdminProductsPage() {
           <thead>
             <tr className="border-b border-border bg-card">
               <th className="px-4 py-3 text-left font-medium text-muted">
-                상품명
-              </th>
-              <th className="hidden px-4 py-3 text-left font-medium text-muted sm:table-cell">
-                카테고리
+                작품명
               </th>
               <th className="px-4 py-3 text-right font-medium text-muted">
                 가격
               </th>
               <th className="hidden px-4 py-3 text-center font-medium text-muted sm:table-cell">
-                재고
+                판매
               </th>
               <th className="px-4 py-3 text-center font-medium text-muted">
                 상태
@@ -134,35 +124,21 @@ export default function AdminProductsPage() {
                 className="border-b border-border transition-colors hover:bg-white/[0.02]"
               >
                 <td className="px-4 py-3">
-                  <div>
-                    <span className="font-medium text-foreground">
-                      {product.name}
-                    </span>
-                    <span className="ml-2 text-[10px] text-muted sm:hidden">
-                      {CATEGORY_LABELS[product.category]}
-                    </span>
-                  </div>
-                </td>
-                <td className="hidden px-4 py-3 sm:table-cell">
-                  <Badge variant="secondary" className="text-[10px]">
-                    {CATEGORY_LABELS[product.category]}
-                  </Badge>
+                  <span className="font-medium text-foreground">
+                    {product.name}
+                  </span>
                 </td>
                 <td className="px-4 py-3 text-right">
                   {formatPrice(product.price)}
                 </td>
                 <td className="hidden px-4 py-3 text-center sm:table-cell">
-                  <span
-                    className={
-                      product.stock === 0
-                        ? "text-red-400"
-                        : product.stock <= 5
-                          ? "text-yellow-400"
-                          : "text-foreground"
-                    }
-                  >
-                    {product.stock}
-                  </span>
+                  {product.sold ? (
+                    <Badge variant="secondary" className="text-[10px]">
+                      판매 완료
+                    </Badge>
+                  ) : (
+                    <Badge className="text-[10px]">판매 가능</Badge>
+                  )}
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-center gap-1">
@@ -243,7 +219,7 @@ export default function AdminProductsPage() {
 
         {filtered.length === 0 && (
           <div className="py-12 text-center text-muted">
-            조건에 맞는 상품이 없습니다.
+            조건에 맞는 작품이 없습니다.
           </div>
         )}
       </div>

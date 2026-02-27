@@ -1,27 +1,22 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { ShoppingBag, Menu, X } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Heart, Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useCartStore } from "@/store/cart";
+import { useWishlistStore } from "@/store/wishlist";
+import { useIsMounted } from "@/lib/hooks";
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const getItemCount = useCartStore((s) => s.getItemCount);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useIsMounted();
+  const getItemCount = useWishlistStore((s) => s.getItemCount);
 
   const itemCount = mounted ? getItemCount() : 0;
 
   const navLinks = [
-    { href: "/products", label: "컬렉션" },
-    { href: "/products?category=accessory", label: "액세서리" },
-    { href: "/products?category=homeware", label: "생활소품" },
-    { href: "/products?category=art", label: "예술작품" },
+    { href: "/products", label: "작품 보기" },
+    { href: "/wishlist", label: "위시리스트" },
   ];
 
   return (
@@ -48,10 +43,10 @@ export function Header() {
 
         <div className="flex items-center gap-3">
           <Link
-            href="/cart"
+            href="/wishlist"
             className="relative flex h-10 w-10 items-center justify-center rounded-lg text-muted transition-colors hover:bg-white/10 hover:text-foreground"
           >
-            <ShoppingBag className="h-5 w-5" />
+            <Heart className="h-5 w-5" />
             {itemCount > 0 && (
               <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-gradient-to-r from-rose-400 to-purple-400 px-1 text-[10px] font-bold text-white">
                 {itemCount}

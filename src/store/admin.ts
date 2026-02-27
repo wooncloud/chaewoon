@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Product, ProductCategory, Coupon, Order, OrderStatus, CartItem } from "@/types";
+import { Product, Coupon, Order, OrderStatus, OrderItem } from "@/types";
 import { products as initialProducts } from "@/data/products";
 import { coupons as initialCoupons } from "@/data/coupons";
 import { orders as initialOrders } from "@/data/orders";
@@ -13,7 +13,7 @@ interface AdminState {
   orders: Order[];
 
   addOrder: (order: {
-    items: CartItem[];
+    items: OrderItem[];
     subtotal: number;
     couponDiscount: number;
     total: number;
@@ -27,6 +27,7 @@ interface AdminState {
   deleteProduct: (id: string) => void;
   togglePublished: (id: string) => void;
   toggleFeatured: (id: string) => void;
+  markAsSold: (productId: string) => void;
 
   addCoupon: (coupon: Omit<Coupon, "id">) => void;
   updateCoupon: (id: string, data: Partial<Coupon>) => void;
@@ -35,10 +36,11 @@ interface AdminState {
 
   getProductById: (id: string) => Product | undefined;
   getPublishedProducts: () => Product[];
+  getAvailableProducts: () => Product[];
   getFeaturedProducts: () => Product[];
   getProductsByFilter: (opts: {
     search?: string;
-    category?: ProductCategory | "all";
+    sold?: "all" | "available" | "sold";
     published?: "all" | "published" | "draft";
   }) => Product[];
 }
@@ -121,6 +123,14 @@ export const useAdminStore = create<AdminState>()(
         }));
       },
 
+      markAsSold: (productId) => {
+        set((state) => ({
+          products: state.products.map((p) =>
+            p.id === productId ? { ...p, sold: true } : p
+          ),
+        }));
+      },
+
       addCoupon: (data) => {
         const id = nextId("cpn", get().coupons);
         const newCoupon: Coupon = { ...data, id };
@@ -159,11 +169,15 @@ export const useAdminStore = create<AdminState>()(
         return get().products.filter((p) => p.published);
       },
 
+      getAvailableProducts: () => {
+        return get().products.filter((p) => p.published && !p.sold);
+      },
+
       getFeaturedProducts: () => {
         return get().products.filter((p) => p.featured && p.published);
       },
 
-      getProductsByFilter: ({ search, category, published }) => {
+      getProductsByFilter: ({ search, sold, published }) => {
         let result = get().products;
 
         if (search) {
@@ -175,8 +189,10 @@ export const useAdminStore = create<AdminState>()(
           );
         }
 
-        if (category && category !== "all") {
-          result = result.filter((p) => p.category === category);
+        if (sold === "available") {
+          result = result.filter((p) => !p.sold);
+        } else if (sold === "sold") {
+          result = result.filter((p) => p.sold);
         }
 
         if (published === "published") {

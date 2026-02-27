@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import {
   TrendingUp,
   ShoppingCart,
@@ -9,7 +8,9 @@ import {
 } from "lucide-react";
 import { useAdminStore } from "@/store/admin";
 import { formatPrice } from "@/lib/utils";
-import { CATEGORY_LABELS, ProductCategory, Order } from "@/types";
+import { Order } from "@/types";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_HEX, ORDER_STATUS_OPTIONS } from "@/lib/constants";
+import { useIsMounted } from "@/lib/hooks";
 import { BarChart } from "@/components/admin/charts/bar-chart";
 import { MiniChart } from "@/components/admin/charts/mini-chart";
 import { DonutChart } from "@/components/admin/charts/donut-chart";
@@ -21,7 +22,7 @@ function getMonthlyRevenue(orders: Order[]) {
   );
 
   delivered.forEach((o) => {
-    const month = o.createdAt.slice(0, 7); // YYYY-MM
+    const month = o.createdAt.slice(0, 7);
     months[month] = (months[month] || 0) + o.total;
   });
 
@@ -31,25 +32,6 @@ function getMonthlyRevenue(orders: Order[]) {
     label: month.replace(/^\d{4}-/, "") + "월",
     value,
   }));
-}
-
-function getCategoryRevenue(orders: Order[]) {
-  const cats: Record<string, number> = {};
-  const delivered = orders.filter((o) => o.status !== "cancelled");
-
-  delivered.forEach((o) => {
-    o.items.forEach((item) => {
-      const cat = item.product.category;
-      cats[cat] = (cats[cat] || 0) + item.product.price * item.quantity;
-    });
-  });
-
-  return Object.entries(cats)
-    .map(([cat, value]) => ({
-      label: CATEGORY_LABELS[cat as ProductCategory] || cat,
-      value,
-    }))
-    .sort((a, b) => b.value - a.value);
 }
 
 function getTopProducts(orders: Order[]) {
@@ -73,35 +55,23 @@ function getTopProducts(orders: Order[]) {
 }
 
 function getOrderStatusData(orders: Order[]) {
-  const statusMap: Record<string, { label: string; color: string }> = {
-    pending: { label: "대기", color: "#facc15" },
-    confirmed: { label: "확인", color: "#60a5fa" },
-    shipping: { label: "배송중", color: "#a78bfa" },
-    delivered: { label: "배송완료", color: "#4ade80" },
-    cancelled: { label: "취소", color: "#f87171" },
-  };
-
   const counts: Record<string, number> = {};
   orders.forEach((o) => {
     counts[o.status] = (counts[o.status] || 0) + 1;
   });
 
-  return Object.entries(statusMap)
-    .filter(([key]) => (counts[key] || 0) > 0)
-    .map(([key, { label, color }]) => ({
-      label,
-      value: counts[key] || 0,
-      color,
+  return ORDER_STATUS_OPTIONS
+    .filter((status) => (counts[status] || 0) > 0)
+    .map((status) => ({
+      label: ORDER_STATUS_LABELS[status],
+      value: counts[status] || 0,
+      color: ORDER_STATUS_HEX[status],
     }));
 }
 
 export default function AnalyticsPage() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const { orders } = useAdminStore();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!mounted) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
@@ -117,7 +87,6 @@ export default function AnalyticsPage() {
   );
 
   const monthlyRevenue = getMonthlyRevenue(orders);
-  const categoryRevenue = getCategoryRevenue(orders);
   const topProducts = getTopProducts(orders);
   const orderStatusData = getOrderStatusData(orders);
   const monthlyValues = monthlyRevenue.map((m) => m.value);
@@ -200,19 +169,9 @@ export default function AnalyticsPage() {
           <DonutChart data={orderStatusData} />
         </div>
 
-        {/* 카테고리별 매출 */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-4 font-bold">카테고리별 매출</h2>
-          <BarChart
-            data={categoryRevenue}
-            formatValue={(v) => formatPrice(v)}
-            color="from-cyan-400/80 to-blue-400/80"
-          />
-        </div>
-
-        {/* 인기 상품 TOP 5 */}
-        <div className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-4 font-bold">인기 상품 TOP 5</h2>
+        {/* 인기 작품 TOP 5 */}
+        <div className="rounded-xl border border-border bg-card p-5 lg:col-span-2">
+          <h2 className="mb-4 font-bold">인기 작품 TOP 5</h2>
           <div className="space-y-3">
             {topProducts.map((p, i) => (
               <div

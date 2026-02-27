@@ -1,16 +1,16 @@
 "use client";
 
-import { use, useState, useEffect } from "react";
+import { use } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { motion } from "framer-motion";
-import { ShoppingBag, Minus, Plus, ChevronLeft, Check } from "lucide-react";
+import { CreditCard, Heart, ChevronLeft } from "lucide-react";
 import { useAdminStore } from "@/store/admin";
+import { useWishlistStore } from "@/store/wishlist";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CATEGORY_LABELS } from "@/types";
 import { formatPrice } from "@/lib/utils";
-import { useCartStore } from "@/store/cart";
+import { useIsMounted } from "@/lib/hooks";
 
 export default function ProductDetailPage({
   params,
@@ -18,17 +18,11 @@ export default function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const storeGetProductById = useAdminStore((s) => s.getProductById);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { addItem, removeItem, hasItem } = useWishlistStore();
 
   const product = mounted ? storeGetProductById(id) : undefined;
-  const [quantity, setQuantity] = useState(1);
-  const [added, setAdded] = useState(false);
-  const addItem = useCartStore((s) => s.addItem);
 
   if (!mounted) {
     return (
@@ -42,10 +36,14 @@ export default function ProductDetailPage({
     notFound();
   }
 
-  const handleAddToCart = () => {
-    addItem(product, quantity);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2000);
+  const isWished = hasItem(product.id);
+
+  const toggleWishlist = () => {
+    if (isWished) {
+      removeItem(product.id);
+    } else {
+      addItem(product);
+    }
   };
 
   return (
@@ -55,7 +53,7 @@ export default function ProductDetailPage({
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
-        컬렉션으로 돌아가기
+        작품 목록으로 돌아가기
       </Link>
 
       <div className="grid gap-8 md:grid-cols-2">
@@ -81,12 +79,11 @@ export default function ProductDetailPage({
           transition={{ duration: 0.4, delay: 0.1 }}
           className="flex flex-col"
         >
-          <div className="mb-2 flex gap-2">
-            <Badge variant="secondary">
-              {CATEGORY_LABELS[product.category]}
-            </Badge>
-            {product.stock <= 5 && product.stock > 0 && (
-              <Badge>한정 {product.stock}개</Badge>
+          <div className="mb-2">
+            {product.sold ? (
+              <Badge variant="secondary">SOLD</Badge>
+            ) : (
+              <Badge>구매 가능</Badge>
             )}
           </div>
 
@@ -105,73 +102,49 @@ export default function ProductDetailPage({
           </div>
 
           {/* Tags */}
-          <div className="mb-6 flex flex-wrap gap-1.5">
-            {product.tags.map((tag) => (
-              <Badge key={tag} variant="outline" className="text-xs">
-                #{tag}
-              </Badge>
-            ))}
-          </div>
-
-          {/* Quantity Selector */}
-          <div className="mb-6">
-            <label className="mb-2 block text-sm text-muted">수량</label>
-            <div className="inline-flex items-center rounded-lg border border-border">
-              <button
-                onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                className="flex h-10 w-10 items-center justify-center text-muted transition-colors hover:text-foreground"
-                disabled={quantity <= 1}
-              >
-                <Minus className="h-4 w-4" />
-              </button>
-              <span className="flex h-10 w-12 items-center justify-center text-sm font-medium">
-                {quantity}
-              </span>
-              <button
-                onClick={() =>
-                  setQuantity(Math.min(product.stock, quantity + 1))
-                }
-                className="flex h-10 w-10 items-center justify-center text-muted transition-colors hover:text-foreground"
-                disabled={quantity >= product.stock}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
+          {product.tags.length > 0 && (
+            <div className="mb-6 flex flex-wrap gap-1.5">
+              {product.tags.map((tag) => (
+                <Badge key={tag} variant="outline" className="text-xs">
+                  #{tag}
+                </Badge>
+              ))}
             </div>
-          </div>
+          )}
 
-          {/* Add to Cart */}
+          {/* Actions */}
           <div className="mt-auto flex flex-col gap-3 sm:flex-row">
-            <Button
-              size="lg"
-              onClick={handleAddToCart}
-              disabled={product.stock === 0}
-              className="flex-1"
-            >
-              {added ? (
-                <>
-                  <Check className="mr-2 h-4 w-4" />
-                  장바구니에 담았습니다
-                </>
-              ) : (
-                <>
-                  <ShoppingBag className="mr-2 h-4 w-4" />
-                  {product.stock === 0
-                    ? "품절"
-                    : `장바구니에 담기 · ${formatPrice(product.price * quantity)}`}
-                </>
-              )}
-            </Button>
-            <Link href="/cart">
-              <Button variant="outline" size="lg" className="w-full sm:w-auto">
-                장바구니 보기
+            {product.sold ? (
+              <Button size="lg" disabled className="flex-1">
+                품절된 작품입니다
               </Button>
-            </Link>
+            ) : (
+              <Link href={`/checkout?product=${product.id}`} className="flex-1">
+                <Button size="lg" className="w-full">
+                  <CreditCard className="mr-2 h-4 w-4" />
+                  바로 구매 · {formatPrice(product.price)}
+                </Button>
+              </Link>
+            )}
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={toggleWishlist}
+              className="sm:w-auto"
+            >
+              <Heart
+                className={`mr-2 h-4 w-4 ${
+                  isWished ? "fill-rose-400 text-rose-400" : ""
+                }`}
+              />
+              {isWished ? "위시리스트에서 제거" : "위시리스트에 담기"}
+            </Button>
           </div>
 
-          {/* Shipping Info */}
+          {/* Info */}
           <div className="mt-6 rounded-lg border border-border bg-card p-4">
             <p className="text-xs text-muted">
-              50,000원 이상 구매 시 무료 배송 · 수작업 제품으로 1-3일 내 출고
+              세상에 단 하나뿐인 수공예 작품 · 수작업 제품으로 1-3일 내 출고
             </p>
           </div>
         </motion.div>

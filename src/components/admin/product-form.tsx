@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Product, ProductCategory, CATEGORY_LABELS } from "@/types";
+import { Product } from "@/types";
 import { useAdminStore } from "@/store/admin";
 
 interface ProductFormProps {
@@ -20,9 +20,7 @@ export function ProductForm({ product }: ProductFormProps) {
     name: product?.name ?? "",
     description: product?.description ?? "",
     price: product?.price ?? 0,
-    category: product?.category ?? ("accessory" as ProductCategory),
     tags: product?.tags.join(", ") ?? "",
-    stock: product?.stock ?? 0,
     featured: product?.featured ?? false,
     published: product?.published ?? false,
   });
@@ -31,11 +29,10 @@ export function ProductForm({ product }: ProductFormProps) {
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
-    if (!form.name.trim()) newErrors.name = "상품명을 입력하세요.";
+    if (!form.name.trim()) newErrors.name = "작품명을 입력하세요.";
     if (!form.description.trim())
-      newErrors.description = "상품 설명을 입력하세요.";
+      newErrors.description = "작품 설명을 입력하세요.";
     if (form.price <= 0) newErrors.price = "가격은 0보다 커야 합니다.";
-    if (form.stock < 0) newErrors.stock = "재고는 0 이상이어야 합니다.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -54,9 +51,7 @@ export function ProductForm({ product }: ProductFormProps) {
         name: form.name,
         description: form.description,
         price: form.price,
-        category: form.category,
         tags,
-        stock: form.stock,
         featured: form.featured,
         published: form.published,
       });
@@ -66,9 +61,8 @@ export function ProductForm({ product }: ProductFormProps) {
         description: form.description,
         price: form.price,
         images: [],
-        category: form.category,
         tags,
-        stock: form.stock,
+        sold: false,
         featured: form.featured,
         published: form.published,
       });
@@ -83,9 +77,9 @@ export function ProductForm({ product }: ProductFormProps) {
         <h2 className="mb-4 font-bold">기본 정보</h2>
         <div className="space-y-4">
           <div>
-            <label className="mb-1.5 block text-sm text-muted">상품명 *</label>
+            <label className="mb-1.5 block text-sm text-muted">작품명 *</label>
             <Input
-              placeholder="예: 자개 나비 브로치"
+              placeholder="예: 자개 나비 키링"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
             />
@@ -96,10 +90,10 @@ export function ProductForm({ product }: ProductFormProps) {
 
           <div>
             <label className="mb-1.5 block text-sm text-muted">
-              상품 설명 *
+              작품 설명 *
             </label>
             <textarea
-              placeholder="상품에 대한 상세 설명을 입력하세요."
+              placeholder="작품에 대한 상세 설명을 입력하세요."
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
@@ -112,57 +106,21 @@ export function ProductForm({ product }: ProductFormProps) {
             )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="mb-1.5 block text-sm text-muted">
-                가격 (원) *
-              </label>
-              <Input
-                type="number"
-                min={0}
-                value={form.price}
-                onChange={(e) =>
-                  setForm({ ...form, price: Number(e.target.value) })
-                }
-              />
-              {errors.price && (
-                <p className="mt-1 text-xs text-red-400">{errors.price}</p>
-              )}
-            </div>
-            <div>
-              <label className="mb-1.5 block text-sm text-muted">재고 *</label>
-              <Input
-                type="number"
-                min={0}
-                value={form.stock}
-                onChange={(e) =>
-                  setForm({ ...form, stock: Number(e.target.value) })
-                }
-              />
-              {errors.stock && (
-                <p className="mt-1 text-xs text-red-400">{errors.stock}</p>
-              )}
-            </div>
-          </div>
-
           <div>
-            <label className="mb-1.5 block text-sm text-muted">카테고리</label>
-            <select
-              value={form.category}
+            <label className="mb-1.5 block text-sm text-muted">
+              가격 (원) *
+            </label>
+            <Input
+              type="number"
+              min={0}
+              value={form.price}
               onChange={(e) =>
-                setForm({
-                  ...form,
-                  category: e.target.value as ProductCategory,
-                })
+                setForm({ ...form, price: Number(e.target.value) })
               }
-              className="flex h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900/50 px-4 text-sm text-white focus:border-purple-400/50 focus:outline-none"
-            >
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
+            />
+            {errors.price && (
+              <p className="mt-1 text-xs text-red-400">{errors.price}</p>
+            )}
           </div>
 
           <div>
@@ -170,7 +128,7 @@ export function ProductForm({ product }: ProductFormProps) {
               태그 (쉼표로 구분)
             </label>
             <Input
-              placeholder="예: 브로치, 나비, 선물추천"
+              placeholder="예: 나비, 선물추천"
               value={form.tags}
               onChange={(e) => setForm({ ...form, tags: e.target.value })}
             />
@@ -193,7 +151,7 @@ export function ProductForm({ product }: ProductFormProps) {
             <div>
               <span className="text-sm text-foreground">게시하기</span>
               <p className="text-xs text-muted">
-                고객 사이트에 상품이 표시됩니다
+                고객 사이트에 작품이 표시됩니다
               </p>
             </div>
           </label>
@@ -207,7 +165,7 @@ export function ProductForm({ product }: ProductFormProps) {
               className="h-4 w-4 rounded border-neutral-600 bg-neutral-800 accent-purple-400"
             />
             <div>
-              <span className="text-sm text-foreground">추천 상품</span>
+              <span className="text-sm text-foreground">추천 작품</span>
               <p className="text-xs text-muted">
                 메인 페이지 추천 섹션에 표시됩니다
               </p>
@@ -218,7 +176,7 @@ export function ProductForm({ product }: ProductFormProps) {
 
       <div className="flex gap-3">
         <Button type="submit" size="lg">
-          {isEdit ? "상품 수정" : "상품 등록"}
+          {isEdit ? "작품 수정" : "작품 등록"}
         </Button>
         <Button
           type="button"

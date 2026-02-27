@@ -27,7 +27,7 @@ export const coupons: Coupon[] = [
   {
     id: "cpn-003",
     code: "PREMIUM20",
-    description: "프리미엄 컬렉션 20% 할인",
+    description: "프리미엄 20% 할인",
     discountType: "percent",
     discountValue: 20,
     minOrderAmount: 200000,

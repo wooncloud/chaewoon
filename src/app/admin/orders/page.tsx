@@ -1,44 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useAdminStore } from "@/store/admin";
+import { useIsMounted } from "@/lib/hooks";
 import { formatPrice } from "@/lib/utils";
 import { OrderStatus } from "@/types";
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  pending: "대기",
-  confirmed: "확인",
-  shipping: "배송중",
-  delivered: "배송완료",
-  cancelled: "취소",
-};
-
-const STATUS_COLORS: Record<OrderStatus, string> = {
-  pending: "bg-yellow-500/10 text-yellow-400",
-  confirmed: "bg-blue-500/10 text-blue-400",
-  shipping: "bg-purple-500/10 text-purple-400",
-  delivered: "bg-green-500/10 text-green-400",
-  cancelled: "bg-red-500/10 text-red-400",
-};
-
-const STATUS_OPTIONS: OrderStatus[] = [
-  "pending",
-  "confirmed",
-  "shipping",
-  "delivered",
-  "cancelled",
-];
+import {
+  ORDER_STATUS_LABELS as STATUS_LABELS,
+  ORDER_STATUS_COLORS as STATUS_COLORS,
+  ORDER_STATUS_OPTIONS as STATUS_OPTIONS,
+} from "@/lib/constants";
 
 export default function AdminOrdersPage() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
   const { orders, updateOrderStatus } = useAdminStore();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!mounted) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;

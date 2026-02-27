@@ -4,30 +4,14 @@ export interface Product {
   description: string;
   price: number;
   images: string[];
-  category: ProductCategory;
   tags: string[];
-  stock: number;
+  sold: boolean;
   featured: boolean;
   published: boolean;
   createdAt: string;
 }
 
-export type ProductCategory =
-  | "accessory"
-  | "homeware"
-  | "stationery"
-  | "art"
-  | "custom";
-
-export const CATEGORY_LABELS: Record<ProductCategory, string> = {
-  accessory: "액세서리",
-  homeware: "생활소품",
-  stationery: "문구",
-  art: "예술작품",
-  custom: "맞춤제작",
-};
-
-export interface CartItem {
+export interface OrderItem {
   product: Product;
   quantity: number;
 }
@@ -47,7 +31,7 @@ export interface Coupon {
 
 export interface Order {
   id: string;
-  items: CartItem[];
+  items: OrderItem[];
   subtotal: number;
   couponDiscount: number;
   total: number;

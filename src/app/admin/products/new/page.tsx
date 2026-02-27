@@ -12,9 +12,9 @@ export default function NewProductPage() {
         className="mb-4 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
-        상품 목록으로
+        작품 목록으로
       </Link>
-      <h1 className="mb-6 text-2xl font-bold">새 상품 등록</h1>
+      <h1 className="mb-6 text-2xl font-bold">새 작품 등록</h1>
       <ProductForm />
     </div>
   );

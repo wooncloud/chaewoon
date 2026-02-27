@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   Plus,
   Trash2,
@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useAdminStore } from "@/store/admin";
 import { formatPrice } from "@/lib/utils";
+import { useIsMounted } from "@/lib/hooks";
 import { Coupon } from "@/types";
 
 type CouponFormData = Omit<Coupon, "id">;
@@ -30,7 +31,7 @@ const emptyCoupon: CouponFormData = {
 };
 
 export default function AdminCouponsPage() {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useIsMounted();
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CouponFormData>(emptyCoupon);
@@ -43,10 +44,6 @@ export default function AdminCouponsPage() {
     deleteCoupon,
     toggleCouponActive,
   } = useAdminStore();
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   if (!mounted) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
