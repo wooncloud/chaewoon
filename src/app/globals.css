@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #0a0a0f;
+  --color-foreground: #ededed;
+  --color-card: #12121a;
+  --color-card-hover: #1a1a25;
+  --color-border: #2a2a35;
+  --color-muted: #8a8a9a;
+  --color-pearl-from: #f9a8d4;
+  --color-pearl-via: #c4b5fd;
+  --color-pearl-to: #67e8f9;
+  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, monospace;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* 자개 광택 그라데이션 */
+.pearl-gradient {
+  background: linear-gradient(
+    135deg,
+    var(--color-pearl-from),
+    var(--color-pearl-via),
+    var(--color-pearl-to)
+  );
+}
+
+.pearl-text {
+  background: linear-gradient(
+    135deg,
+    var(--color-pearl-from),
+    var(--color-pearl-via),
+    var(--color-pearl-to)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.pearl-border {
+  border-image: linear-gradient(
+      135deg,
+      var(--color-pearl-from),
+      var(--color-pearl-via),
+      var(--color-pearl-to)
+    )
+    1;
+}
+
+/* 스크롤바 스타일 */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-background);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-muted);
+}
+
+/* 상품 이미지 플레이스홀더 */
+.product-image-placeholder {
+  background: linear-gradient(
+    135deg,
+    #1a1a2e 0%,
+    #16213e 50%,
+    #0f3460 100%
+  );
+}
