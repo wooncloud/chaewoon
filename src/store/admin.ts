@@ -22,6 +22,8 @@ interface AdminState {
   toggleCouponActive: (id: string) => void;
 
   getProductById: (id: string) => Product | undefined;
+  getPublishedProducts: () => Product[];
+  getFeaturedProducts: () => Product[];
   getProductsByFilter: (opts: {
     search?: string;
     category?: ProductCategory | "all";
@@ -29,8 +31,13 @@ interface AdminState {
   }) => Product[];
 }
 
-let productCounter = initialProducts.length;
-let couponCounter = initialCoupons.length;
+function nextId(prefix: string, items: { id: string }[]): string {
+  const maxNum = items.reduce((max, item) => {
+    const match = item.id.match(new RegExp(`^${prefix}-(\\d+)$`));
+    return match ? Math.max(max, parseInt(match[1], 10)) : max;
+  }, 0);
+  return `${prefix}-${String(maxNum + 1).padStart(3, "0")}`;
+}
 
 export const useAdminStore = create<AdminState>()(
   persist(
@@ -39,10 +46,10 @@ export const useAdminStore = create<AdminState>()(
       coupons: initialCoupons,
 
       addProduct: (data) => {
-        productCounter++;
+        const id = nextId("prod", get().products);
         const newProduct: Product = {
           ...data,
-          id: `prod-${String(productCounter).padStart(3, "0")}`,
+          id,
           createdAt: new Date().toISOString().split("T")[0],
         };
         set((state) => ({
@@ -81,11 +88,8 @@ export const useAdminStore = create<AdminState>()(
       },
 
       addCoupon: (data) => {
-        couponCounter++;
-        const newCoupon: Coupon = {
-          ...data,
-          id: `cpn-${String(couponCounter).padStart(3, "0")}`,
-        };
+        const id = nextId("cpn", get().coupons);
+        const newCoupon: Coupon = { ...data, id };
         set((state) => ({
           coupons: [newCoupon, ...state.coupons],
         }));
@@ -115,6 +119,14 @@ export const useAdminStore = create<AdminState>()(
 
       getProductById: (id) => {
         return get().products.find((p) => p.id === id);
+      },
+
+      getPublishedProducts: () => {
+        return get().products.filter((p) => p.published);
+      },
+
+      getFeaturedProducts: () => {
+        return get().products.filter((p) => p.featured && p.published);
       },
 
       getProductsByFilter: ({ search, category, published }) => {

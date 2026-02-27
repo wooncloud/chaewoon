@@ -1,14 +1,22 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product/product-card";
-import { getFeaturedProducts } from "@/data/products";
+import { useAdminStore } from "@/store/admin";
 
 export default function HomePage() {
-  const featuredProducts = getFeaturedProducts();
+  const [mounted, setMounted] = useState(false);
+  const getFeaturedProducts = useAdminStore((s) => s.getFeaturedProducts);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const featuredProducts = mounted ? getFeaturedProducts() : [];
 
   return (
     <div>

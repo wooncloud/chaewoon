@@ -1,11 +1,11 @@
 "use client";
 
-import { use, useState } from "react";
+import { use, useState, useEffect } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { motion } from "framer-motion";
 import { ShoppingBag, Minus, Plus, ChevronLeft, Check } from "lucide-react";
-import { getProductById } from "@/data/products";
+import { useAdminStore } from "@/store/admin";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CATEGORY_LABELS } from "@/types";
@@ -18,12 +18,27 @@ export default function ProductDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const product = getProductById(id);
+  const [mounted, setMounted] = useState(false);
+  const storeGetProductById = useAdminStore((s) => s.getProductById);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const product = mounted ? storeGetProductById(id) : undefined;
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
 
-  if (!product) {
+  if (!mounted) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="pearl-text text-lg">로딩 중...</div>
+      </div>
+    );
+  }
+
+  if (!product || !product.published) {
     notFound();
   }
 

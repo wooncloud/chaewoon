@@ -1,17 +1,23 @@
 "use client";
 
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { products } from "@/data/products";
+import { useAdminStore } from "@/store/admin";
 import { ProductCard } from "@/components/product/product-card";
 import { CATEGORY_LABELS, ProductCategory } from "@/types";
 
 function ProductListContent() {
   const searchParams = useSearchParams();
   const category = searchParams.get("category") as ProductCategory | null;
+  const [mounted, setMounted] = useState(false);
+  const getPublishedProducts = useAdminStore((s) => s.getPublishedProducts);
 
-  const published = products.filter((p) => p.published);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const published = mounted ? getPublishedProducts() : [];
   const filtered = category
     ? published.filter((p) => p.category === category)
     : published;
