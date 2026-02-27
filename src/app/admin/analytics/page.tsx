@@ -27,6 +27,7 @@ function getMonthlyRevenue(orders: Order[]) {
 
   const sorted = Object.entries(months).sort(([a], [b]) => a.localeCompare(b));
   return sorted.map(([month, value]) => ({
+    key: month,
     label: month.replace(/^\d{4}-/, "") + "월",
     value,
   }));
@@ -133,11 +134,11 @@ export default function AnalyticsPage() {
       label: "총 주문 수",
       value: `${totalOrders}건`,
       icon: ShoppingCart,
-      trend: monthlyValues.map((_, i) =>
+      trend: monthlyRevenue.map((m) =>
         orders.filter(
           (o) =>
             o.status !== "cancelled" &&
-            o.createdAt.slice(0, 7) === monthlyRevenue[i]?.label.replace("월", "").padStart(2, "0")
+            o.createdAt.slice(0, 7) === m.key
         ).length
       ),
       color: "#60a5fa",
