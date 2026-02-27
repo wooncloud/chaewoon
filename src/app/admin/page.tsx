@@ -2,13 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Package, Tag, Eye, EyeOff } from "lucide-react";
+import {
+  Package,
+  Tag,
+  Eye,
+  EyeOff,
+  DollarSign,
+  ShoppingCart,
+} from "lucide-react";
 import { useAdminStore } from "@/store/admin";
 import { formatPrice } from "@/lib/utils";
 
 export default function AdminDashboardPage() {
   const [mounted, setMounted] = useState(false);
-  const { products, coupons } = useAdminStore();
+  const { products, coupons, orders } = useAdminStore();
 
   useEffect(() => {
     setMounted(true);
@@ -22,31 +29,38 @@ export default function AdminDashboardPage() {
   const draftCount = products.filter((p) => !p.published).length;
   const totalStock = products.reduce((sum, p) => sum + p.stock, 0);
   const activeCoupons = coupons.filter((c) => c.isActive).length;
+  const activeOrders = orders.filter((o) => o.status !== "cancelled");
+  const totalRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0);
+  const pendingOrders = orders.filter((o) => o.status === "pending").length;
 
   const stats = [
     {
+      label: "총 매출",
+      value: formatPrice(totalRevenue),
+      icon: DollarSign,
+      href: "/admin/analytics",
+      large: false,
+    },
+    {
+      label: "총 주문",
+      value: `${activeOrders.length}건`,
+      icon: ShoppingCart,
+      href: "/admin/orders",
+      large: false,
+    },
+    {
       label: "전체 상품",
-      value: products.length,
+      value: String(products.length),
       icon: Package,
       href: "/admin/products",
-    },
-    {
-      label: "게시 중",
-      value: publishedCount,
-      icon: Eye,
-      href: "/admin/products",
-    },
-    {
-      label: "비공개",
-      value: draftCount,
-      icon: EyeOff,
-      href: "/admin/products",
+      large: false,
     },
     {
       label: "활성 쿠폰",
-      value: activeCoupons,
+      value: String(activeCoupons),
       icon: Tag,
       href: "/admin/coupons",
+      large: false,
     },
   ];
 
@@ -65,36 +79,68 @@ export default function AdminDashboardPage() {
               <span className="text-sm text-muted">{stat.label}</span>
               <stat.icon className="h-4 w-4 text-muted" />
             </div>
-            <span className="text-3xl font-bold">{stat.value}</span>
+            <span className="text-2xl font-bold">{stat.value}</span>
           </Link>
         ))}
       </div>
 
-      <div className="mt-8 grid gap-6 lg:grid-cols-2">
-        {/* 최근 등록 상품 */}
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        {/* 빠른 현황 */}
+        <div className="rounded-xl border border-border bg-card p-5">
+          <h2 className="mb-4 font-bold">현황 요약</h2>
+          <div className="space-y-3 text-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Eye className="h-3.5 w-3.5 text-green-400" />
+                <span className="text-muted">게시 중</span>
+              </div>
+              <span className="text-foreground">{publishedCount}개</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <EyeOff className="h-3.5 w-3.5 text-neutral-500" />
+                <span className="text-muted">비공개</span>
+              </div>
+              <span className="text-foreground">{draftCount}개</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShoppingCart className="h-3.5 w-3.5 text-yellow-400" />
+                <span className="text-muted">처리 대기 주문</span>
+              </div>
+              <span className={pendingOrders > 0 ? "font-bold text-yellow-400" : "text-foreground"}>
+                {pendingOrders}건
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* 최근 주문 */}
         <div className="rounded-xl border border-border bg-card p-5">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-bold">최근 등록 상품</h2>
+            <h2 className="font-bold">최근 주문</h2>
             <Link
-              href="/admin/products"
+              href="/admin/orders"
               className="text-xs text-muted hover:text-foreground"
             >
               전체 보기 &rarr;
             </Link>
           </div>
           <div className="space-y-3">
-            {products.slice(0, 5).map((p) => (
+            {orders.slice(0, 5).map((o) => (
               <div
-                key={p.id}
+                key={o.id}
                 className="flex items-center justify-between text-sm"
               >
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`h-2 w-2 rounded-full ${p.published ? "bg-green-400" : "bg-neutral-500"}`}
-                  />
-                  <span className="text-foreground">{p.name}</span>
+                <div>
+                  <span className="text-foreground">
+                    {o.shippingAddress.name}
+                  </span>
+                  <span className="ml-2 text-xs text-muted">
+                    {o.createdAt}
+                  </span>
                 </div>
-                <span className="text-muted">{formatPrice(p.price)}</span>
+                <span className="text-muted">{formatPrice(o.total)}</span>
               </div>
             ))}
           </div>

@@ -6,6 +6,8 @@ import {
   LayoutDashboard,
   Package,
   Tag,
+  BarChart3,
+  ClipboardList,
   ChevronLeft,
   Menu,
   X,
@@ -17,6 +19,8 @@ const navItems = [
   { href: "/admin", label: "대시보드", icon: LayoutDashboard },
   { href: "/admin/products", label: "상품 관리", icon: Package },
   { href: "/admin/coupons", label: "쿠폰 관리", icon: Tag },
+  { href: "/admin/orders", label: "주문 관리", icon: ClipboardList },
+  { href: "/admin/analytics", label: "매출 통계", icon: BarChart3 },
 ];
 
 export function AdminSidebar() {

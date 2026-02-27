@@ -8,6 +8,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCartStore } from "@/store/cart";
+import { useAdminStore } from "@/store/admin";
 import { formatPrice } from "@/lib/utils";
 import { ShippingAddress } from "@/types";
 
@@ -26,6 +27,7 @@ export default function CheckoutPage() {
 
   const { items, appliedCoupon, getSubtotal, getCouponDiscount, getTotal, clearCart } =
     useCartStore();
+  const addOrder = useAdminStore((s) => s.addOrder);
 
   useEffect(() => {
     setMounted(true);
@@ -86,6 +88,15 @@ export default function CheckoutPage() {
 
     // 결제 처리 시뮬레이션
     await new Promise((r) => setTimeout(r, 1500));
+
+    addOrder({
+      items: [...items],
+      subtotal,
+      couponDiscount,
+      total: total + shippingFee,
+      couponCode: appliedCoupon?.code,
+      shippingAddress: address,
+    });
 
     clearCart();
     setOrderComplete(true);

@@ -2,13 +2,25 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { Product, ProductCategory, Coupon } from "@/types";
+import { Product, ProductCategory, Coupon, Order, OrderStatus, CartItem } from "@/types";
 import { products as initialProducts } from "@/data/products";
 import { coupons as initialCoupons } from "@/data/coupons";
+import { orders as initialOrders } from "@/data/orders";
 
 interface AdminState {
   products: Product[];
   coupons: Coupon[];
+  orders: Order[];
+
+  addOrder: (order: {
+    items: CartItem[];
+    subtotal: number;
+    couponDiscount: number;
+    total: number;
+    couponCode?: string;
+    shippingAddress: Order["shippingAddress"];
+  }) => void;
+  updateOrderStatus: (id: string, status: OrderStatus) => void;
 
   addProduct: (product: Omit<Product, "id" | "createdAt">) => void;
   updateProduct: (id: string, data: Partial<Product>) => void;
@@ -44,6 +56,28 @@ export const useAdminStore = create<AdminState>()(
     (set, get) => ({
       products: initialProducts,
       coupons: initialCoupons,
+      orders: initialOrders,
+
+      addOrder: (data) => {
+        const id = nextId("ord", get().orders);
+        const newOrder: Order = {
+          ...data,
+          id,
+          status: "pending",
+          createdAt: new Date().toISOString().split("T")[0],
+        };
+        set((state) => ({
+          orders: [newOrder, ...state.orders],
+        }));
+      },
+
+      updateOrderStatus: (id, status) => {
+        set((state) => ({
+          orders: state.orders.map((o) =>
+            o.id === id ? { ...o, status } : o
+          ),
+        }));
+      },
 
       addProduct: (data) => {
         const id = nextId("prod", get().products);
