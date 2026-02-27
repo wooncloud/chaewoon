@@ -1,31 +1,37 @@
 "use client";
 
-import { Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ProductForm } from "@/components/admin/product-form";
-import { useAdminStore } from "@/store/admin";
-import { useIsMounted } from "@/lib/hooks";
+import { fetchProduct, ApiProduct } from "@/lib/api";
 
 function EditProductContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const mounted = useIsMounted();
   const id = searchParams.get("id");
-  const getProductById = useAdminStore((s) => s.getProductById);
 
-  if (!mounted) {
+  const [product, setProduct] = useState<ApiProduct | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (!id) {
+      router.push("/admin/products");
+      return;
+    }
+    fetchProduct(id)
+      .then(setProduct)
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [id, router]);
+
+  if (loading) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
   }
 
-  if (!id) {
-    router.push("/admin/products");
-    return null;
-  }
-
-  const product = getProductById(id);
-  if (!product) {
+  if (notFound || !product) {
     return (
       <div className="py-20 text-center">
         <p className="text-muted">작품을 찾을 수 없습니다.</p>

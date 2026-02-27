@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import {
   Plus,
@@ -14,7 +14,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { useAdminStore } from "@/store/admin";
+import {
+  fetchProducts,
+  deleteProduct,
+  toggleProductPublished,
+  toggleProductFeatured,
+  ApiProduct,
+} from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
 
@@ -28,23 +34,46 @@ export default function AdminProductsPage() {
     "all" | "published" | "draft"
   >("all");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const {
-    getProductsByFilter,
-    togglePublished,
-    toggleFeatured,
-    deleteProduct,
-  } = useAdminStore();
+  const loadProducts = useCallback(() => {
+    const params: Record<string, string> = {};
+    if (search.trim()) params.search = search.trim();
+    if (soldFilter === "available") params.sold = "false";
+    if (soldFilter === "sold") params.sold = "true";
+    if (publishedFilter === "published") params.published = "true";
+    if (publishedFilter === "draft") params.published = "false";
 
-  if (!mounted) {
+    fetchProducts(params)
+      .then(setProducts)
+      .catch(() => setProducts([]))
+      .finally(() => setLoading(false));
+  }, [search, soldFilter, publishedFilter]);
+
+  useEffect(() => {
+    loadProducts();
+  }, [loadProducts]);
+
+  const handleTogglePublished = async (id: string) => {
+    await toggleProductPublished(id);
+    loadProducts();
+  };
+
+  const handleToggleFeatured = async (id: string) => {
+    await toggleProductFeatured(id);
+    loadProducts();
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteProduct(id);
+    setDeleteConfirm(null);
+    loadProducts();
+  };
+
+  if (!mounted || loading) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
   }
-
-  const filtered = getProductsByFilter({
-    search,
-    sold: soldFilter,
-    published: publishedFilter,
-  });
 
   return (
     <div>
@@ -93,7 +122,7 @@ export default function AdminProductsPage() {
         </select>
       </div>
 
-      <div className="text-xs text-muted mb-3">{filtered.length}개의 작품</div>
+      <div className="text-xs text-muted mb-3">{products.length}개의 작품</div>
 
       {/* Product Table */}
       <div className="overflow-x-auto rounded-xl border border-border">
@@ -118,7 +147,7 @@ export default function AdminProductsPage() {
             </tr>
           </thead>
           <tbody>
-            {filtered.map((product) => (
+            {products.map((product) => (
               <tr
                 key={product.id}
                 className="border-b border-border transition-colors hover:bg-white/[0.02]"
@@ -143,7 +172,7 @@ export default function AdminProductsPage() {
                 <td className="px-4 py-3">
                   <div className="flex items-center justify-center gap-1">
                     <button
-                      onClick={() => togglePublished(product.id)}
+                      onClick={() => handleTogglePublished(product.id)}
                       className={`flex items-center gap-1 rounded-full px-2 py-1 text-[10px] transition-colors ${
                         product.published
                           ? "bg-green-500/10 text-green-400 hover:bg-green-500/20"
@@ -161,7 +190,7 @@ export default function AdminProductsPage() {
                       </span>
                     </button>
                     <button
-                      onClick={() => toggleFeatured(product.id)}
+                      onClick={() => handleToggleFeatured(product.id)}
                       className={`flex h-6 w-6 items-center justify-center rounded-full transition-colors ${
                         product.featured
                           ? "text-yellow-400 hover:bg-yellow-500/20"
@@ -187,10 +216,7 @@ export default function AdminProductsPage() {
                     {deleteConfirm === product.id ? (
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => {
-                            deleteProduct(product.id);
-                            setDeleteConfirm(null);
-                          }}
+                          onClick={() => handleDelete(product.id)}
                           className="rounded px-2 py-1 text-[10px] text-red-400 hover:bg-red-500/20"
                         >
                           삭제
@@ -217,7 +243,7 @@ export default function AdminProductsPage() {
           </tbody>
         </table>
 
-        {filtered.length === 0 && (
+        {products.length === 0 && (
           <div className="py-12 text-center text-muted">
             조건에 맞는 작품이 없습니다.
           </div>

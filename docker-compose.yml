@@ -1,0 +1,41 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: chaewoon
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build:
+      context: ./chaewoon-backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3849:3849"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/chaewoon?schema=public
+      PORT: "3849"
+      CORS_ORIGIN: http://localhost:3847
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./chaewoon-front
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:3849
+    restart: unless-stopped
+    ports:
+      - "3847:3847"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

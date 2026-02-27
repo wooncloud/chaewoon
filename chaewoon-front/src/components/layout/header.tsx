@@ -10,9 +10,9 @@ import { useIsMounted } from "@/lib/hooks";
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mounted = useIsMounted();
-  const getItemCount = useWishlistStore((s) => s.getItemCount);
+  const getCount = useWishlistStore((s) => s.getCount);
 
-  const itemCount = mounted ? getItemCount() : 0;
+  const itemCount = mounted ? getCount() : 0;
 
   const navLinks = [
     { href: "/products", label: "작품 보기" },

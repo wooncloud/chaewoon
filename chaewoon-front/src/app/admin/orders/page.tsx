@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import { useAdminStore } from "@/store/admin";
+import { useState, useEffect, useCallback } from "react";
 import { useIsMounted } from "@/lib/hooks";
 import { formatPrice } from "@/lib/utils";
 import { OrderStatus } from "@/types";
@@ -10,22 +9,47 @@ import {
   ORDER_STATUS_COLORS as STATUS_COLORS,
   ORDER_STATUS_OPTIONS as STATUS_OPTIONS,
 } from "@/lib/constants";
+import {
+  fetchOrders,
+  updateOrderStatus,
+  ApiOrder,
+} from "@/lib/api";
 
 export default function AdminOrdersPage() {
   const mounted = useIsMounted();
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const { orders, updateOrderStatus } = useAdminStore();
+  const loadOrders = useCallback(() => {
+    const status = statusFilter === "all" ? undefined : statusFilter;
+    fetchOrders(status)
+      .then(setOrders)
+      .catch(() => setOrders([]))
+      .finally(() => setLoading(false));
+  }, [statusFilter]);
 
-  if (!mounted) {
+  useEffect(() => {
+    loadOrders();
+  }, [loadOrders]);
+
+  // We need all orders for count display, so also load them
+  const [allOrders, setAllOrders] = useState<ApiOrder[]>([]);
+  useEffect(() => {
+    fetchOrders().then(setAllOrders).catch(() => setAllOrders([]));
+  }, []);
+
+  const handleStatusChange = async (orderId: string, status: OrderStatus) => {
+    await updateOrderStatus(orderId, status);
+    loadOrders();
+    // also refresh counts
+    fetchOrders().then(setAllOrders).catch(() => {});
+  };
+
+  if (!mounted || loading) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
   }
-
-  const filtered =
-    statusFilter === "all"
-      ? orders
-      : orders.filter((o) => o.status === statusFilter);
 
   return (
     <div>
@@ -41,10 +65,10 @@ export default function AdminOrdersPage() {
               : "bg-white/5 text-muted hover:bg-white/10"
           }`}
         >
-          전체 ({orders.length})
+          전체 ({allOrders.length})
         </button>
         {STATUS_OPTIONS.map((status) => {
-          const count = orders.filter((o) => o.status === status).length;
+          const count = allOrders.filter((o) => o.status === status).length;
           return (
             <button
               key={status}
@@ -63,7 +87,7 @@ export default function AdminOrdersPage() {
 
       {/* Orders List */}
       <div className="space-y-3">
-        {filtered.map((order) => (
+        {orders.map((order) => (
           <div
             key={order.id}
             className="rounded-xl border border-border bg-card transition-colors hover:border-white/10"
@@ -80,19 +104,21 @@ export default function AdminOrdersPage() {
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-mono text-xs text-muted">
-                    {order.id}
+                    {order.id.slice(0, 8)}
                   </span>
                   <span
-                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[order.status]}`}
+                    className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${STATUS_COLORS[order.status as OrderStatus]}`}
                   >
-                    {STATUS_LABELS[order.status]}
+                    {STATUS_LABELS[order.status as OrderStatus]}
                   </span>
                 </div>
                 <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
                   <span className="text-foreground">
-                    {order.shippingAddress.name}
+                    {order.shippingName}
                   </span>
-                  <span className="text-muted">{order.createdAt}</span>
+                  <span className="text-muted">
+                    {new Date(order.createdAt).toLocaleDateString("ko-KR")}
+                  </span>
                   <span className="font-medium">
                     {formatPrice(order.total)}
                   </span>
@@ -115,7 +141,7 @@ export default function AdminOrdersPage() {
                     <div className="space-y-1.5">
                       {order.items.map((item) => (
                         <div
-                          key={item.product.id}
+                          key={item.id}
                           className="flex justify-between text-sm"
                         >
                           <span className="text-foreground">
@@ -160,16 +186,16 @@ export default function AdminOrdersPage() {
                     </h4>
                     <div className="space-y-1 text-sm">
                       <p className="text-foreground">
-                        {order.shippingAddress.name}
+                        {order.shippingName}
                       </p>
                       <p className="text-muted">
-                        {order.shippingAddress.phone}
+                        {order.shippingPhone}
                       </p>
                       <p className="text-muted">
-                        ({order.shippingAddress.zipCode}){" "}
-                        {order.shippingAddress.address}
-                        {order.shippingAddress.addressDetail &&
-                          ` ${order.shippingAddress.addressDetail}`}
+                        ({order.shippingZipCode}){" "}
+                        {order.shippingAddress}
+                        {order.shippingDetail &&
+                          ` ${order.shippingDetail}`}
                       </p>
                     </div>
 
@@ -182,7 +208,7 @@ export default function AdminOrdersPage() {
                           <button
                             key={status}
                             onClick={() =>
-                              updateOrderStatus(order.id, status)
+                              handleStatusChange(order.id, status)
                             }
                             className={`rounded-full px-3 py-1 text-[11px] transition-colors ${
                               order.status === status
@@ -203,7 +229,7 @@ export default function AdminOrdersPage() {
           </div>
         ))}
 
-        {filtered.length === 0 && (
+        {orders.length === 0 && (
           <div className="py-12 text-center text-muted">
             해당 상태의 주문이 없습니다.
           </div>

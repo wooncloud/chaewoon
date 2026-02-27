@@ -2,25 +2,25 @@
 
 import Link from "next/link";
 import { Heart } from "lucide-react";
-import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useWishlistStore } from "@/store/wishlist";
+import { ApiProduct } from "@/lib/api";
 
 interface ProductCardProps {
-  product: Product;
+  product: ApiProduct;
 }
 
 export function ProductCard({ product }: ProductCardProps) {
-  const { addItem, removeItem, hasItem } = useWishlistStore();
-  const isWished = hasItem(product.id);
+  const { addId, removeId, hasId } = useWishlistStore();
+  const isWished = hasId(product.id);
 
   const toggleWishlist = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (isWished) {
-      removeItem(product.id);
+      removeId(product.id);
     } else {
-      addItem(product);
+      addId(product.id);
     }
   };
 

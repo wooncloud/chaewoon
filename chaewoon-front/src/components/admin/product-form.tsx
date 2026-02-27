@@ -5,16 +5,14 @@ import { useRouter } from "next/navigation";
 import { Plus, X, ChevronUp, ChevronDown, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Product } from "@/types";
-import { useAdminStore } from "@/store/admin";
+import { createProduct, updateProduct, ApiProduct } from "@/lib/api";
 
 interface ProductFormProps {
-  product?: Product;
+  product?: ApiProduct;
 }
 
 export function ProductForm({ product }: ProductFormProps) {
   const router = useRouter();
-  const { addProduct, updateProduct } = useAdminStore();
   const isEdit = !!product;
 
   const [form, setForm] = useState({
@@ -29,6 +27,7 @@ export function ProductForm({ product }: ProductFormProps) {
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -40,7 +39,7 @@ export function ProductForm({ product }: ProductFormProps) {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validate()) return;
 
@@ -51,36 +50,52 @@ export function ProductForm({ product }: ProductFormProps) {
 
     const bodyImages = form.bodyImages.filter((url) => url.trim() !== "");
 
-    if (isEdit && product) {
-      updateProduct(product.id, {
-        name: form.name,
-        description: form.description,
-        price: form.price,
-        tags,
-        thumbnail: form.thumbnail.trim(),
-        bodyImages,
-        featured: form.featured,
-        published: form.published,
-      });
-    } else {
-      addProduct({
-        name: form.name,
-        description: form.description,
-        price: form.price,
-        thumbnail: form.thumbnail.trim(),
-        bodyImages,
-        tags,
-        sold: false,
-        featured: form.featured,
-        published: form.published,
-      });
-    }
+    setSubmitting(true);
 
-    router.push("/admin/products");
+    try {
+      if (isEdit && product) {
+        await updateProduct(product.id, {
+          name: form.name,
+          description: form.description,
+          price: form.price,
+          tags,
+          thumbnail: form.thumbnail.trim(),
+          bodyImages,
+          featured: form.featured,
+          published: form.published,
+        });
+      } else {
+        await createProduct({
+          name: form.name,
+          description: form.description,
+          price: form.price,
+          thumbnail: form.thumbnail.trim(),
+          bodyImages,
+          tags,
+          sold: false,
+          featured: form.featured,
+          published: form.published,
+        });
+      }
+
+      router.push("/admin/products");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "저장 중 오류가 발생했습니다.";
+      setErrors({ submit: message });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {errors.submit && (
+        <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {errors.submit}
+        </div>
+      )}
+
       <div className="rounded-xl border border-border bg-card p-5">
         <h2 className="mb-4 font-bold">기본 정보</h2>
         <div className="space-y-4">
@@ -306,8 +321,12 @@ export function ProductForm({ product }: ProductFormProps) {
       </div>
 
       <div className="flex gap-3">
-        <Button type="submit" size="lg">
-          {isEdit ? "작품 수정" : "작품 등록"}
+        <Button type="submit" size="lg" disabled={submitting}>
+          {submitting
+            ? "저장 중..."
+            : isEdit
+              ? "작품 수정"
+              : "작품 등록"}
         </Button>
         <Button
           type="button"

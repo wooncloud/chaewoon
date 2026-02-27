@@ -1,20 +1,47 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Trash2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWishlistStore } from "@/store/wishlist";
-import { useAdminStore } from "@/store/admin";
+import { fetchProduct, ApiProduct } from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
 
+interface WishlistItem {
+  id: string;
+  product: ApiProduct | null; // null means deleted / not found
+}
+
 export default function WishlistPage() {
   const mounted = useIsMounted();
-  const { items, removeItem, clearAll } = useWishlistStore();
-  const getProductById = useAdminStore((s) => s.getProductById);
+  const { ids, removeId, clearAll } = useWishlistStore();
+  const [items, setItems] = useState<WishlistItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!mounted) {
+  useEffect(() => {
+    if (!mounted) return;
+    if (ids.length === 0) {
+      setItems([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    Promise.all(
+      ids.map((id) =>
+        fetchProduct(id)
+          .then((product) => ({ id, product }))
+          .catch(() => ({ id, product: null }))
+      )
+    )
+      .then(setItems)
+      .finally(() => setLoading(false));
+  }, [mounted, ids]);
+
+  if (!mounted || loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="pearl-text">로딩 중...</div>
@@ -22,7 +49,7 @@ export default function WishlistPage() {
     );
   }
 
-  if (items.length === 0) {
+  if (ids.length === 0) {
     return (
       <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4">
         <Heart className="h-16 w-16 text-muted" />
@@ -50,9 +77,11 @@ export default function WishlistPage() {
       <div className="space-y-3">
         <AnimatePresence>
           {items.map((wishItem) => {
-            const liveProduct = getProductById(wishItem.id);
-            const isDeleted = !liveProduct;
-            const isSold = isDeleted || (liveProduct?.sold ?? wishItem.sold);
+            const isDeleted = !wishItem.product;
+            const isSold = isDeleted || wishItem.product!.sold;
+            const name = wishItem.product?.name ?? "알 수 없는 작품";
+            const thumbnail = wishItem.product?.thumbnail ?? "";
+            const price = wishItem.product?.price ?? 0;
 
             return (
               <motion.div
@@ -69,10 +98,10 @@ export default function WishlistPage() {
                   href={isDeleted ? "#" : `/products/${wishItem.id}`}
                   className="product-image-placeholder h-20 w-20 shrink-0 overflow-hidden rounded-lg"
                 >
-                  {wishItem.thumbnail ? (
+                  {thumbnail ? (
                     <img
-                      src={wishItem.thumbnail}
-                      alt={wishItem.name}
+                      src={thumbnail}
+                      alt={name}
                       className="h-full w-full object-cover"
                     />
                   ) : (
@@ -87,13 +116,13 @@ export default function WishlistPage() {
                 <div className="flex flex-1 flex-col">
                   <div className="flex items-start justify-between">
                     <Link
-                      href={`/products/${wishItem.id}`}
+                      href={isDeleted ? "#" : `/products/${wishItem.id}`}
                       className="text-sm font-semibold transition-colors hover:text-white"
                     >
-                      {wishItem.name}
+                      {name}
                     </Link>
                     <button
-                      onClick={() => removeItem(wishItem.id)}
+                      onClick={() => removeId(wishItem.id)}
                       className="ml-2 text-muted transition-colors hover:text-red-400"
                     >
                       <Trash2 className="h-4 w-4" />
@@ -102,7 +131,7 @@ export default function WishlistPage() {
 
                   <div className="mt-auto flex items-center justify-between pt-2">
                     <span className="text-sm font-bold">
-                      {formatPrice(wishItem.price)}
+                      {isDeleted ? "-" : formatPrice(price)}
                     </span>
 
                     {isSold ? (

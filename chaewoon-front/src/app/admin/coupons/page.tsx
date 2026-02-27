@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Plus,
   Trash2,
@@ -11,20 +11,36 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAdminStore } from "@/store/admin";
+import {
+  fetchCoupons,
+  createCoupon,
+  updateCoupon,
+  deleteCoupon,
+  toggleCouponActive,
+  ApiCoupon,
+} from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
-import { Coupon } from "@/types";
 
-type CouponFormData = Omit<Coupon, "id">;
+interface CouponFormData {
+  code: string;
+  description: string;
+  discountType: "PERCENT" | "FIXED";
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscountAmount: number | null;
+  validFrom: string;
+  validUntil: string;
+  isActive: boolean;
+}
 
 const emptyCoupon: CouponFormData = {
   code: "",
   description: "",
-  discountType: "percent",
+  discountType: "PERCENT",
   discountValue: 0,
   minOrderAmount: 0,
-  maxDiscountAmount: undefined,
+  maxDiscountAmount: null,
   validFrom: "",
   validUntil: "",
   isActive: true,
@@ -36,16 +52,22 @@ export default function AdminCouponsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CouponFormData>(emptyCoupon);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [coupons, setCoupons] = useState<ApiCoupon[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
-  const {
-    coupons,
-    addCoupon,
-    updateCoupon,
-    deleteCoupon,
-    toggleCouponActive,
-  } = useAdminStore();
+  const loadCoupons = () => {
+    fetchCoupons()
+      .then(setCoupons)
+      .catch(() => setCoupons([]))
+      .finally(() => setLoading(false));
+  };
 
-  if (!mounted) {
+  useEffect(() => {
+    loadCoupons();
+  }, []);
+
+  if (!mounted || loading) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
   }
 
@@ -55,7 +77,7 @@ export default function AdminCouponsPage() {
     setShowForm(true);
   };
 
-  const openEdit = (coupon: Coupon) => {
+  const openEdit = (coupon: ApiCoupon) => {
     setForm({
       code: coupon.code,
       description: coupon.description,
@@ -63,27 +85,67 @@ export default function AdminCouponsPage() {
       discountValue: coupon.discountValue,
       minOrderAmount: coupon.minOrderAmount,
       maxDiscountAmount: coupon.maxDiscountAmount,
-      validFrom: coupon.validFrom,
-      validUntil: coupon.validUntil,
+      validFrom: coupon.validFrom ? coupon.validFrom.slice(0, 10) : "",
+      validUntil: coupon.validUntil ? coupon.validUntil.slice(0, 10) : "",
       isActive: coupon.isActive,
     });
     setEditingId(coupon.id);
     setShowForm(true);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.code || !form.description) return;
 
-    if (editingId) {
-      updateCoupon(editingId, form);
-    } else {
-      addCoupon(form);
-    }
+    setSubmitting(true);
 
-    setShowForm(false);
-    setEditingId(null);
-    setForm(emptyCoupon);
+    try {
+      if (editingId) {
+        await updateCoupon(editingId, {
+          code: form.code,
+          description: form.description,
+          discountType: form.discountType,
+          discountValue: form.discountValue,
+          minOrderAmount: form.minOrderAmount,
+          maxDiscountAmount: form.maxDiscountAmount,
+          validFrom: form.validFrom,
+          validUntil: form.validUntil,
+          isActive: form.isActive,
+        });
+      } else {
+        await createCoupon({
+          code: form.code,
+          description: form.description,
+          discountType: form.discountType,
+          discountValue: form.discountValue,
+          minOrderAmount: form.minOrderAmount,
+          maxDiscountAmount: form.maxDiscountAmount,
+          validFrom: form.validFrom,
+          validUntil: form.validUntil,
+          isActive: form.isActive,
+        });
+      }
+
+      setShowForm(false);
+      setEditingId(null);
+      setForm(emptyCoupon);
+      loadCoupons();
+    } catch {
+      // silently handle for now
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await deleteCoupon(id);
+    setDeleteConfirm(null);
+    loadCoupons();
+  };
+
+  const handleToggleActive = async (id: string) => {
+    await toggleCouponActive(id);
+    loadCoupons();
   };
 
   return (
@@ -149,13 +211,13 @@ export default function AdminCouponsPage() {
                   onChange={(e) =>
                     setForm({
                       ...form,
-                      discountType: e.target.value as "percent" | "fixed",
+                      discountType: e.target.value as "PERCENT" | "FIXED",
                     })
                   }
                   className="flex h-11 w-full rounded-lg border border-neutral-700 bg-neutral-900/50 px-4 text-sm text-white focus:border-purple-400/50 focus:outline-none"
                 >
-                  <option value="percent">정률 (%)</option>
-                  <option value="fixed">정액 (원)</option>
+                  <option value="PERCENT">정률 (%)</option>
+                  <option value="FIXED">정액 (원)</option>
                 </select>
               </div>
               <div>
@@ -207,7 +269,7 @@ export default function AdminCouponsPage() {
                       ...form,
                       maxDiscountAmount: e.target.value
                         ? Number(e.target.value)
-                        : undefined,
+                        : null,
                     })
                   }
                 />
@@ -239,8 +301,8 @@ export default function AdminCouponsPage() {
             </div>
 
             <div className="flex gap-3 pt-2">
-              <Button type="submit">
-                {editingId ? "수정 완료" : "등록"}
+              <Button type="submit" disabled={submitting}>
+                {submitting ? "저장 중..." : editingId ? "수정 완료" : "등록"}
               </Button>
               <Button
                 type="button"
@@ -294,7 +356,7 @@ export default function AdminCouponsPage() {
                   {coupon.description}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  {coupon.discountType === "percent"
+                  {coupon.discountType === "PERCENT"
                     ? `${coupon.discountValue}%`
                     : formatPrice(coupon.discountValue)}
                 </td>
@@ -303,7 +365,7 @@ export default function AdminCouponsPage() {
                 </td>
                 <td className="px-4 py-3 text-center">
                   <button
-                    onClick={() => toggleCouponActive(coupon.id)}
+                    onClick={() => handleToggleActive(coupon.id)}
                     className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] ${
                       coupon.isActive
                         ? "bg-green-500/10 text-green-400"
@@ -331,10 +393,7 @@ export default function AdminCouponsPage() {
                     {deleteConfirm === coupon.id ? (
                       <div className="flex items-center gap-1">
                         <button
-                          onClick={() => {
-                            deleteCoupon(coupon.id);
-                            setDeleteConfirm(null);
-                          }}
+                          onClick={() => handleDelete(coupon.id)}
                           className="rounded px-2 py-1 text-[10px] text-red-400 hover:bg-red-500/20"
                         >
                           삭제

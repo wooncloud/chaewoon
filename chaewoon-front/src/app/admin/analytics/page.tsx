@@ -1,132 +1,103 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import {
   TrendingUp,
   ShoppingCart,
   DollarSign,
   Package,
 } from "lucide-react";
-import { useAdminStore } from "@/store/admin";
 import { formatPrice } from "@/lib/utils";
-import { Order } from "@/types";
-import { ORDER_STATUS_LABELS, ORDER_STATUS_HEX, ORDER_STATUS_OPTIONS } from "@/lib/constants";
+import { ORDER_STATUS_LABELS, ORDER_STATUS_HEX } from "@/lib/constants";
+import { OrderStatus } from "@/types";
 import { useIsMounted } from "@/lib/hooks";
 import { BarChart } from "@/components/admin/charts/bar-chart";
 import { MiniChart } from "@/components/admin/charts/mini-chart";
 import { DonutChart } from "@/components/admin/charts/donut-chart";
-
-function getMonthlyRevenue(orders: Order[]) {
-  const months: Record<string, number> = {};
-  const delivered = orders.filter(
-    (o) => o.status !== "cancelled"
-  );
-
-  delivered.forEach((o) => {
-    const month = o.createdAt.slice(0, 7);
-    months[month] = (months[month] || 0) + o.total;
-  });
-
-  const sorted = Object.entries(months).sort(([a], [b]) => a.localeCompare(b));
-  return sorted.map(([month, value]) => ({
-    key: month,
-    label: month.replace(/^\d{4}-/, "") + "월",
-    value,
-  }));
-}
-
-function getTopProducts(orders: Order[]) {
-  const products: Record<string, { name: string; count: number; revenue: number }> = {};
-  const delivered = orders.filter((o) => o.status !== "cancelled");
-
-  delivered.forEach((o) => {
-    o.items.forEach((item) => {
-      const key = item.product.id;
-      if (!products[key]) {
-        products[key] = { name: item.product.name, count: 0, revenue: 0 };
-      }
-      products[key].count += item.quantity;
-      products[key].revenue += item.product.price * item.quantity;
-    });
-  });
-
-  return Object.values(products)
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 5);
-}
-
-function getOrderStatusData(orders: Order[]) {
-  const counts: Record<string, number> = {};
-  orders.forEach((o) => {
-    counts[o.status] = (counts[o.status] || 0) + 1;
-  });
-
-  return ORDER_STATUS_OPTIONS
-    .filter((status) => (counts[status] || 0) > 0)
-    .map((status) => ({
-      label: ORDER_STATUS_LABELS[status],
-      value: counts[status] || 0,
-      color: ORDER_STATUS_HEX[status],
-    }));
-}
+import {
+  fetchAnalyticsSummary,
+  fetchMonthlyRevenue,
+  fetchOrderStatusDistribution,
+  fetchTopProducts,
+  AnalyticsSummary,
+  MonthlyRevenue,
+  OrderStatusDist,
+  TopProduct,
+} from "@/lib/api";
 
 export default function AnalyticsPage() {
   const mounted = useIsMounted();
-  const { orders } = useAdminStore();
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [monthlyRevenue, setMonthlyRevenue] = useState<MonthlyRevenue[]>([]);
+  const [orderStatusData, setOrderStatusData] = useState<OrderStatusDist[]>([]);
+  const [topProducts, setTopProducts] = useState<TopProduct[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!mounted) {
+  useEffect(() => {
+    Promise.all([
+      fetchAnalyticsSummary(),
+      fetchMonthlyRevenue(),
+      fetchOrderStatusDistribution(),
+      fetchTopProducts(5),
+    ])
+      .then(([s, mr, os, tp]) => {
+        setSummary(s);
+        setMonthlyRevenue(mr);
+        setOrderStatusData(os);
+        setTopProducts(tp);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (!mounted || loading || !summary) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
   }
 
-  const activeOrders = orders.filter((o) => o.status !== "cancelled");
-  const totalRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0);
-  const totalOrders = activeOrders.length;
-  const avgOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
-  const totalItemsSold = activeOrders.reduce(
-    (sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0),
-    0
-  );
-
-  const monthlyRevenue = getMonthlyRevenue(orders);
-  const topProducts = getTopProducts(orders);
-  const orderStatusData = getOrderStatusData(orders);
-  const monthlyValues = monthlyRevenue.map((m) => m.value);
+  const monthlyValues = monthlyRevenue.map((m) => m.revenue);
 
   const kpis = [
     {
       label: "총 매출",
-      value: formatPrice(totalRevenue),
+      value: formatPrice(summary.totalRevenue),
       icon: DollarSign,
       trend: monthlyValues,
       color: "#4ade80",
     },
     {
       label: "총 주문 수",
-      value: `${totalOrders}건`,
+      value: `${summary.totalOrders}건`,
       icon: ShoppingCart,
-      trend: monthlyRevenue.map((m) =>
-        orders.filter(
-          (o) =>
-            o.status !== "cancelled" &&
-            o.createdAt.slice(0, 7) === m.key
-        ).length
-      ),
+      trend: [] as number[],
       color: "#60a5fa",
     },
     {
       label: "평균 주문 금액",
-      value: formatPrice(avgOrderValue),
+      value: formatPrice(summary.avgOrderAmount),
       icon: TrendingUp,
-      trend: [],
+      trend: [] as number[],
       color: "#c4b5fd",
     },
     {
-      label: "총 판매 수량",
-      value: `${totalItemsSold}개`,
+      label: "판매된 작품",
+      value: `${summary.totalSold}개`,
       icon: Package,
-      trend: [],
+      trend: [] as number[],
       color: "#f9a8d4",
     },
   ];
+
+  const barChartData = monthlyRevenue.map((m) => ({
+    key: m.key,
+    label: m.label,
+    value: m.revenue,
+  }));
+
+  const donutData = orderStatusData.map((d) => ({
+    label: ORDER_STATUS_LABELS[d.status as OrderStatus] || d.status,
+    value: d.count,
+    color: ORDER_STATUS_HEX[d.status as OrderStatus] || "#888",
+  }));
 
   return (
     <div>
@@ -158,7 +129,7 @@ export default function AnalyticsPage() {
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-4 font-bold">월별 매출</h2>
           <BarChart
-            data={monthlyRevenue}
+            data={barChartData}
             formatValue={(v) => formatPrice(v)}
           />
         </div>
@@ -166,7 +137,7 @@ export default function AnalyticsPage() {
         {/* 주문 상태 분포 */}
         <div className="rounded-xl border border-border bg-card p-5">
           <h2 className="mb-4 font-bold">주문 상태 분포</h2>
-          <DonutChart data={orderStatusData} />
+          <DonutChart data={donutData} />
         </div>
 
         {/* 인기 작품 TOP 5 */}
@@ -175,21 +146,24 @@ export default function AnalyticsPage() {
           <div className="space-y-3">
             {topProducts.map((p, i) => (
               <div
-                key={p.name}
+                key={p.product.id}
                 className="flex items-center gap-3 text-sm"
               >
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-white/10 text-[10px] font-bold text-muted">
                   {i + 1}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-foreground">{p.name}</div>
-                  <div className="text-xs text-muted">{p.count}개 판매</div>
+                  <div className="truncate text-foreground">{p.product.name}</div>
+                  <div className="text-xs text-muted">{p.totalQuantity}개 판매</div>
                 </div>
                 <span className="shrink-0 font-medium">
-                  {formatPrice(p.revenue)}
+                  {formatPrice(p.product.price * p.totalQuantity)}
                 </span>
               </div>
             ))}
+            {topProducts.length === 0 && (
+              <p className="text-sm text-muted">데이터가 없습니다.</p>
+            )}
           </div>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import {
   Package,
@@ -10,15 +11,40 @@ import {
   ShoppingCart,
   CheckCircle,
 } from "lucide-react";
-import { useAdminStore } from "@/store/admin";
+import {
+  fetchAnalyticsSummary,
+  fetchProducts,
+  fetchOrders,
+  ApiProduct,
+  ApiOrder,
+  AnalyticsSummary,
+} from "@/lib/api";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
 
 export default function AdminDashboardPage() {
   const mounted = useIsMounted();
-  const { products, coupons, orders } = useAdminStore();
+  const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
+  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  if (!mounted) {
+  useEffect(() => {
+    Promise.all([
+      fetchAnalyticsSummary(),
+      fetchProducts(),
+      fetchOrders(),
+    ])
+      .then(([s, p, o]) => {
+        setSummary(s);
+        setProducts(p);
+        setOrders(o);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (!mounted || loading) {
     return <div className="pearl-text py-20 text-center">로딩 중...</div>;
   }
 
@@ -26,33 +52,30 @@ export default function AdminDashboardPage() {
   const draftCount = products.filter((p) => !p.published).length;
   const availableCount = products.filter((p) => !p.sold && p.published).length;
   const soldCount = products.filter((p) => p.sold).length;
-  const activeCoupons = coupons.filter((c) => c.isActive).length;
-  const activeOrders = orders.filter((o) => o.status !== "cancelled");
-  const totalRevenue = activeOrders.reduce((sum, o) => sum + o.total, 0);
-  const pendingOrders = orders.filter((o) => o.status === "pending").length;
+  const pendingOrders = orders.filter((o) => o.status === "PENDING").length;
 
   const stats = [
     {
       label: "총 매출",
-      value: formatPrice(totalRevenue),
+      value: formatPrice(summary?.totalRevenue ?? 0),
       icon: DollarSign,
       href: "/admin/analytics",
     },
     {
       label: "총 주문",
-      value: `${activeOrders.length}건`,
+      value: `${summary?.totalOrders ?? 0}건`,
       icon: ShoppingCart,
       href: "/admin/orders",
     },
     {
       label: "전체 작품",
-      value: String(products.length),
+      value: String(summary?.totalProducts ?? 0),
       icon: Package,
       href: "/admin/products",
     },
     {
       label: "활성 쿠폰",
-      value: String(activeCoupons),
+      value: String(summary?.totalCoupons ?? 0),
       icon: Tag,
       href: "/admin/coupons",
     },
@@ -142,10 +165,10 @@ export default function AdminDashboardPage() {
               >
                 <div>
                   <span className="text-foreground">
-                    {o.shippingAddress.name}
+                    {o.shippingName}
                   </span>
                   <span className="ml-2 text-xs text-muted">
-                    {o.createdAt}
+                    {new Date(o.createdAt).toLocaleDateString("ko-KR")}
                   </span>
                 </div>
                 <span className="text-muted">{formatPrice(o.total)}</span>

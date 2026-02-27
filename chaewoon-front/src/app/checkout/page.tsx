@@ -1,17 +1,21 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
 import { ChevronLeft, CreditCard, Check, Tag } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useAdminStore } from "@/store/admin";
 import { useIsMounted } from "@/lib/hooks";
 import { formatPrice } from "@/lib/utils";
-import { ShippingAddress, Coupon } from "@/types";
-import { validateCoupon, calculateCouponDiscount } from "@/data/coupons";
+import {
+  fetchProduct,
+  createOrder,
+  validateCoupon,
+  ApiProduct,
+  CouponValidation,
+} from "@/lib/api";
 
 function CheckoutContent() {
   const router = useRouter();
@@ -19,12 +23,16 @@ function CheckoutContent() {
   const productId = searchParams.get("product");
 
   const mounted = useIsMounted();
+  const [product, setProduct] = useState<ApiProduct | null>(null);
+  const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);
+  const [orderError, setOrderError] = useState("");
   const [couponInput, setCouponInput] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponValidation, setCouponValidation] =
+    useState<CouponValidation | null>(null);
   const [couponMessage, setCouponMessage] = useState("");
-  const [address, setAddress] = useState<ShippingAddress>({
+  const [address, setAddress] = useState({
     name: "",
     phone: "",
     zipCode: "",
@@ -32,11 +40,25 @@ function CheckoutContent() {
     addressDetail: "",
   });
 
-  const getProductById = useAdminStore((s) => s.getProductById);
-  const addOrder = useAdminStore((s) => s.addOrder);
-  const markAsSold = useAdminStore((s) => s.markAsSold);
+  // Load product from API
+  useEffect(() => {
+    if (!productId) {
+      setLoading(false);
+      return;
+    }
+    fetchProduct(productId)
+      .then((p) => {
+        if (p.sold) {
+          setProduct(null);
+        } else {
+          setProduct(p);
+        }
+      })
+      .catch(() => setProduct(null))
+      .finally(() => setLoading(false));
+  }, [productId]);
 
-  if (!mounted) {
+  if (!mounted || loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
         <div className="pearl-text">로딩 중...</div>
@@ -44,13 +66,9 @@ function CheckoutContent() {
     );
   }
 
-  const product = productId ? getProductById(productId) : undefined;
-
-  if (!product || product.sold) {
-    if (!orderComplete) {
-      router.push("/products");
-      return null;
-    }
+  if (!product && !orderComplete) {
+    router.push("/products");
+    return null;
   }
 
   if (orderComplete) {
@@ -77,9 +95,7 @@ function CheckoutContent() {
   }
 
   const subtotal = product!.price;
-  const couponDiscount = appliedCoupon
-    ? calculateCouponDiscount(appliedCoupon, subtotal)
-    : 0;
+  const couponDiscount = couponValidation ? couponValidation.discount : 0;
   const total = Math.max(0, subtotal - couponDiscount);
   const shippingFee = subtotal >= 50000 ? 0 : 3000;
 
@@ -89,20 +105,26 @@ function CheckoutContent() {
     address.zipCode.trim() &&
     address.address.trim();
 
-  const handleApplyCoupon = () => {
-    const result = validateCoupon(couponInput, subtotal);
-    if (result.valid && result.coupon) {
-      setAppliedCoupon(result.coupon);
-      setCouponMessage(result.message);
-    } else {
-      setAppliedCoupon(null);
-      setCouponMessage(result.message);
+  const handleApplyCoupon = async () => {
+    if (!couponInput.trim()) return;
+    try {
+      const result = await validateCoupon(couponInput.trim(), subtotal);
+      if (result.valid) {
+        setCouponValidation(result);
+        setCouponMessage(result.coupon.description);
+      } else {
+        setCouponValidation(null);
+        setCouponMessage("유효하지 않은 쿠폰입니다.");
+      }
+    } catch {
+      setCouponValidation(null);
+      setCouponMessage("유효하지 않은 쿠폰입니다.");
     }
     setCouponInput("");
   };
 
   const handleRemoveCoupon = () => {
-    setAppliedCoupon(null);
+    setCouponValidation(null);
     setCouponMessage("");
   };
 
@@ -111,28 +133,29 @@ function CheckoutContent() {
     if (!isFormValid || !product) return;
 
     setIsSubmitting(true);
+    setOrderError("");
 
-    await new Promise((r) => setTimeout(r, 1500));
-
-    const freshProduct = getProductById(product.id);
-    if (!freshProduct || freshProduct.sold) {
+    try {
+      await createOrder({
+        productId: product.id,
+        subtotal,
+        couponDiscount,
+        total: total + shippingFee,
+        couponCode: couponValidation?.coupon.code,
+        shippingName: address.name,
+        shippingPhone: address.phone,
+        shippingZipCode: address.zipCode,
+        shippingAddress: address.address,
+        shippingDetail: address.addressDetail || undefined,
+      });
+      setOrderComplete(true);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "주문 처리 중 오류가 발생했습니다.";
+      setOrderError(message);
+    } finally {
       setIsSubmitting(false);
-      router.push("/products");
-      return;
     }
-
-    addOrder({
-      items: [{ product, quantity: 1 }],
-      subtotal,
-      couponDiscount,
-      total: total + shippingFee,
-      couponCode: appliedCoupon?.code,
-      shippingAddress: address,
-    });
-
-    markAsSold(product.id);
-    setOrderComplete(true);
-    setIsSubmitting(false);
   };
 
   return (
@@ -146,6 +169,12 @@ function CheckoutContent() {
       </Link>
 
       <h1 className="mb-6 text-2xl font-bold">주문/결제</h1>
+
+      {orderError && (
+        <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {orderError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmit}>
         <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
@@ -244,10 +273,10 @@ function CheckoutContent() {
                 <Tag className="h-3.5 w-3.5" />
                 쿠폰 코드
               </label>
-              {appliedCoupon ? (
+              {couponValidation ? (
                 <div className="flex items-center justify-between rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2">
                   <span className="text-xs text-green-400">
-                    {appliedCoupon.description}
+                    {couponValidation.coupon.description}
                   </span>
                   <button
                     type="button"
@@ -276,7 +305,7 @@ function CheckoutContent() {
                   </Button>
                 </div>
               )}
-              {couponMessage && !appliedCoupon && (
+              {couponMessage && !couponValidation && (
                 <p className="mt-1.5 text-xs text-red-400">{couponMessage}</p>
               )}
             </div>
