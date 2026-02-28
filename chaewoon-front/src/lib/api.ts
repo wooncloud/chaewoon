@@ -135,12 +135,14 @@ export function fetchProducts(params?: {
   sold?: string;
   published?: string;
   featured?: string;
+  limit?: string;
 }) {
   const q = new URLSearchParams();
   if (params?.search) q.set("search", params.search);
   if (params?.sold) q.set("sold", params.sold);
   if (params?.published) q.set("published", params.published);
   if (params?.featured) q.set("featured", params.featured);
+  if (params?.limit) q.set("limit", params.limit);
   const qs = q.toString();
   return request<Product[]>(`/products${qs ? `?${qs}` : ""}`);
 }

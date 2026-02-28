@@ -30,6 +30,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:-chaewoon-docker-jwt-secret}
       ADMIN_SETUP_KEY: ${ADMIN_SETUP_KEY:-chaewoon-docker-setup-key}
       TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:-}
+      DISCORD_ORDER_WEBHOOK_URL: ${DISCORD_ORDER_WEBHOOK_URL:-}
+      DISCORD_CONTACT_WEBHOOK_URL: ${DISCORD_CONTACT_WEBHOOK_URL:-}
     volumes:
       - uploads:/app/uploads
     depends_on:

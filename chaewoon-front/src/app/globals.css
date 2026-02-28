@@ -10,7 +10,7 @@
   --color-pearl-from: #f9a8d4;
   --color-pearl-via: #c4b5fd;
   --color-pearl-to: #67e8f9;
-  --font-sans: system-ui, -apple-system, sans-serif;
+  --font-sans: "Pretendard Variable", Pretendard, system-ui, -apple-system, sans-serif;
   --font-mono: ui-monospace, monospace;
 }
 

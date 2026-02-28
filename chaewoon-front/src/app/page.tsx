@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Sparkles } from "lucide-react";
+import { ArrowRight, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product/product-card";
 import { fetchProducts } from "@/lib/api";
@@ -16,7 +16,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchProducts({ featured: "true", published: "true" })
+    fetchProducts({ published: "true", limit: "5" })
       .then(setFeaturedProducts)
       .catch(() => setFeaturedProducts([]))
       .finally(() => setLoading(false));
@@ -33,42 +33,41 @@ export default function HomePage() {
   return (
     <div>
       {/* Hero Section */}
-      <section className="relative overflow-hidden px-4 py-20 md:py-32">
-        <div className="absolute inset-0 opacity-20">
-          <div className="pearl-gradient absolute -left-32 -top-32 h-96 w-96 rounded-full blur-3xl" />
-          <div className="pearl-gradient absolute -bottom-32 -right-32 h-96 w-96 rounded-full blur-3xl" />
+      <section className="relative overflow-hidden px-6 py-10 md:py-16">
+        <div className="absolute inset-0 opacity-10">
+          <div className="pearl-gradient absolute -left-32 -top-32 h-80 w-80 rounded-full blur-[100px]" />
+          <div className="pearl-gradient absolute -bottom-32 -right-32 h-80 w-80 rounded-full blur-[100px]" />
         </div>
 
-        <div className="relative mx-auto max-w-4xl text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
+        <div className="relative mx-auto max-w-2xl text-center">
+          <motion.p
+            initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.7 }}
+            className="text-sm leading-[2] tracking-[0.06em] text-foreground/60 md:text-base md:leading-[2.2]"
           >
-            <div className="mb-4 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-muted">
-              <Sparkles className="h-3 w-3" />
-              세상에 단 하나뿐인 자개 공예
-            </div>
+            구름들이 각기 모양이 다르듯
+            <br className="md:hidden" />
+            {" "}세상 어디에도 똑같은 결은 없기에,
+            <br />
+            자개의 영롱함은 오직 당신만을 위해 준비된
+            <br className="md:hidden" />
+            {" "}자연의 선물입니다.
+          </motion.p>
 
-            <h1 className="mb-6 text-4xl font-bold leading-tight tracking-tight md:text-6xl">
-              구름 사이로 비치는
-              <br />
-              <span className="pearl-text">영롱한 자개 빛깔</span>
-            </h1>
-
-            <p className="mx-auto mb-8 max-w-xl text-base leading-relaxed text-muted md:text-lg">
-              채운(彩雲)의 자개 공예 작품은 장인의 손끝에서 하나하나 탄생합니다.
-              빛의 각도에 따라 달라지는 무지개빛 광택을 일상에 담아보세요.
-              모든 작품은 세상에 단 하나뿐입니다.
-            </p>
-
-            <Link href="/products">
-              <Button size="lg">
-                작품 보기
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </motion.div>
+          <motion.h1
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, delay: 0.2 }}
+            className="mt-5 text-base leading-[2] tracking-[0.06em] text-foreground/80 md:text-lg md:leading-[2.2]"
+          >
+            당신의 가장 고유한 순간을
+            <br className="md:hidden" />
+            {" "}특별함으로 가득{" "}
+            <span className="pearl-text font-medium">채운(彩雲)</span>,
+            <br />
+            단 하나의 조각을 전합니다.
+          </motion.h1>
         </div>
       </section>
 
@@ -107,17 +106,22 @@ export default function HomePage() {
         </section>
       )}
 
-      {/* Brand Story */}
+      {/* Contact CTA */}
       <section className="border-t border-border px-4 py-16">
-        <div className="mx-auto max-w-3xl text-center">
-          <h2 className="mb-4 text-2xl font-bold">채운의 이야기</h2>
-          <p className="leading-relaxed text-muted">
-            채운(彩雲)은 &lsquo;오색 구름&rsquo;이라는 뜻으로, 자개가 빛을
-            받아 영롱하게 빛나는 모습을 담았습니다. 하나의 작품에 정성과
-            시간을 담아 제작하기에, 모든 작품은 세상에 단 하나뿐입니다.
-            한번 판매되면 다시 만들 수 없는, 당신만의 특별한 자개 공예
-            작품을 만나보세요.
+        <div className="mx-auto max-w-md text-center">
+          <MessageCircle className="mx-auto mb-4 h-6 w-6 text-muted" />
+          <h2 className="mb-2 text-lg font-medium">문의하기</h2>
+          <p className="mb-6 text-sm leading-relaxed text-muted">
+            작품에 대해 궁금한 점이나
+            <br />
+            주문 관련 문의가 있으시면 편하게 연락해 주세요.
           </p>
+          <Link href="/contact">
+            <Button variant="outline">
+              문의하기
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </Link>
         </div>
       </section>
     </div>

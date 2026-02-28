@@ -23,8 +23,9 @@ export class ProductsController {
     @Query("sold") sold?: string,
     @Query("published") published?: string,
     @Query("featured") featured?: string,
+    @Query("limit") limit?: string,
   ) {
-    return this.productsService.findAll({ search, sold, published, featured });
+    return this.productsService.findAll({ search, sold, published, featured, limit });
   }
 
   @Get(":id")

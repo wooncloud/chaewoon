@@ -12,6 +12,7 @@ export class ProductsService {
     sold?: string;
     published?: string;
     featured?: string;
+    limit?: string;
   }) {
     const where: Prisma.ProductWhereInput = {};
 
@@ -31,9 +32,12 @@ export class ProductsService {
 
     if (query.featured === "true") where.featured = true;
 
+    const take = query.limit ? parseInt(query.limit, 10) : undefined;
+
     return this.prisma.product.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      ...(take && take > 0 ? { take } : {}),
     });
   }
 
