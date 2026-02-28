@@ -110,3 +110,14 @@ export interface CouponValidation {
   discount: number;
   finalAmount: number;
 }
+
+// ─── Contact ───
+
+export interface ContactMessage {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string;
+  message: string;
+  createdAt: string;
+}

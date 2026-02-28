@@ -8,6 +8,7 @@ import {
   Tag,
   BarChart3,
   ClipboardList,
+  MessageSquare,
   ChevronLeft,
   Menu,
   X,
@@ -20,6 +21,7 @@ const navItems = [
   { href: "/admin/products", label: "상품 관리", icon: Package },
   { href: "/admin/coupons", label: "쿠폰 관리", icon: Tag },
   { href: "/admin/orders", label: "주문 관리", icon: ClipboardList },
+  { href: "/admin/contacts", label: "문의 관리", icon: MessageSquare },
   { href: "/admin/analytics", label: "매출 통계", icon: BarChart3 },
 ];
 

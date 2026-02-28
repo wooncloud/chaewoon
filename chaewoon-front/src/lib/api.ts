@@ -8,6 +8,7 @@ import type {
   OrderStatusDist,
   TopProduct,
   CouponValidation,
+  ContactMessage,
 } from "chaewoon-shared";
 import { useToastStore } from "./toast-store";
 
@@ -252,6 +253,24 @@ export function toggleCouponActive(id: string) {
   return request<Coupon>(`/coupons/${id}/toggle-active`, {
     method: "PATCH",
   });
+}
+
+// ─── Contact ───
+
+export function sendContact(data: {
+  name: string;
+  email: string;
+  phone?: string;
+  message: string;
+}) {
+  return request<{ success: boolean }>("/contact", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function fetchContacts() {
+  return request<ContactMessage[]>("/contact");
 }
 
 // ─── Analytics ───

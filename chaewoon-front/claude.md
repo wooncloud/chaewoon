@@ -29,6 +29,7 @@ chaewoon-front/src/
 │   │   └── [id]/page.tsx           # 작품 상세 (썸네일 + 본문 갤러리, 바로 구매)
 │   ├── wishlist/page.tsx           # 위시리스트 (ID 기반, API에서 상품 정보 조회)
 │   ├── checkout/page.tsx           # 주문/결제 (쿼리 ?product=<id>, 쿠폰 적용)
+│   ├── contact/page.tsx           # 문의하기 (이름, 이메일, 전화번호?, 메시지)
 │   ├── login/page.tsx             # 관리자 로그인 (아이디/비밀번호)
 │   └── admin/
 │       ├── layout.tsx              # Admin 사이드바 레이아웃
@@ -39,18 +40,19 @@ chaewoon-front/src/
 │       │   └── edit/page.tsx       # 작품 수정 (?id=<id>)
 │       ├── orders/page.tsx         # 주문 관리 (상태 필터, 상세 아코디언, 상태 변경)
 │       ├── coupons/page.tsx        # 쿠폰 CRUD (인라인 폼, 활성 토글)
+│       ├── contacts/page.tsx      # 문의 관리 (목록 조회)
 │       └── analytics/page.tsx      # 매출 통계 (KPI, 차트)
 ├── components/
 │   ├── ui/                         # Button, Badge, Input, Toast (CVA 기반)
 │   ├── layout/
-│   │   ├── header.tsx              # 위시리스트 카운트 표시
+│   │   ├── header.tsx              # 네비게이션 (작품 보기, 문의하기, 위시리스트)
 │   │   ├── footer.tsx
 │   │   ├── client-layout.tsx       # Admin 경로 판별 → Header/Footer 조건부 렌더링
 │   │   └── toast-container.tsx     # 토스트 목록 렌더 (우상단 고정)
 │   ├── product/
 │   │   └── product-card.tsx        # 상품 카드 (썸네일, SOLD 오버레이, 위시리스트 하트)
 │   └── admin/
-│       ├── sidebar.tsx             # Admin 네비게이션
+│       ├── sidebar.tsx             # Admin 네비게이션 (대시보드, 작품, 주문, 쿠폰, 문의, 통계)
 │       ├── product-form.tsx        # 작품 등록/수정 공통 폼
 │       └── charts/                 # BarChart, DonutChart, MiniChart (SVG)
 ├── lib/
@@ -90,6 +92,7 @@ chaewoon-front/src/
 - **Products**: `fetchProducts()`, `fetchProduct()`, `createProduct()`, `updateProduct()`, `deleteProduct()`, `markProductSold()`, `toggleProductPublished()`, `toggleProductFeatured()`
 - **Orders**: `fetchOrders()`, `fetchOrder()`, `createOrder()`, `updateOrderStatus()`
 - **Coupons**: `fetchCoupons()`, `validateCoupon()`, `createCoupon()`, `updateCoupon()`, `deleteCoupon()`, `toggleCouponActive()`
+- **Contact**: `sendContact()`, `fetchContacts()`
 - **Analytics**: `fetchAnalyticsSummary()`, `fetchMonthlyRevenue()`, `fetchOrderStatusDistribution()`, `fetchTopProducts()`
 
 ## Toast 시스템

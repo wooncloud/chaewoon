@@ -114,6 +114,8 @@ pnpm docker:logs    # 로그 확인
 | `CORS_ORIGIN` | backend `.env` | `http://localhost:3847` |
 | `JWT_SECRET` | backend `.env` | JWT 서명 키 |
 | `ADMIN_SETUP_KEY` | backend `.env` | 계정 관리 API 헤더 키 |
+| `DISCORD_ORDER_WEBHOOK_URL` | backend `.env` | 주문 알림 디스코드 웹훅 (선택) |
+| `DISCORD_CONTACT_WEBHOOK_URL` | backend `.env` | 문의 알림 디스코드 웹훅 (선택) |
 | `NEXT_PUBLIC_API_URL` | frontend `.env.local` | `http://localhost:3849` |
 
 ## 공유 패키지 (`chaewoon-shared`)
@@ -125,6 +127,7 @@ pnpm docker:logs    # 로그 확인
 - **엔티티 타입**: `Product`, `Order`, `OrderItem`, `Coupon`
 - **Enum 타입/값**: `OrderStatus`, `DiscountType` (타입) + `ORDER_STATUS_VALUES`, `DISCOUNT_TYPE_VALUES` (런타임 배열)
 - **분석 타입**: `AnalyticsSummary`, `MonthlyRevenue`, `OrderStatusDist`, `TopProduct`, `CouponValidation`
+- **문의 타입**: `ContactMessage`
 
 ### 타입 변경 시 규칙
 1. `chaewoon-shared/src/types.ts`에서 타입 수정
@@ -149,6 +152,7 @@ pnpm docker:logs    # 로그 확인
 - Products: POST, PATCH, DELETE (GET은 공개)
 - Orders: GET, PATCH (POST /orders는 고객용 → 공개)
 - Coupons: 전체 CRUD (GET /coupons/validate만 공개)
+- Contact: GET (POST /contact는 고객용 → 공개)
 - Analytics: 전체
 
 ## 에러 처리 체계
@@ -227,8 +231,23 @@ NestJS 예외 발생 → HttpExceptionFilter → ApiErrorResponse 형태로 응�
 - **프론트엔드**: `uploadImage()` → FormData 전송, `toAbsoluteUrl()` → 상대 경로를 절대 URL로 변환
 - **ProductForm**: 파일 선택 버튼으로 업로드 (썸네일 1장, 본문 이미지 복수)
 
+## 디스코드 웹훅 알림
+
+- **DiscordService** (`common/discord.service.ts`): 주문/문의 알림 전송
+- 주문 생성 시 `sendOrderNotification()` — 주문 정보 임베드 (fire-and-forget)
+- 문의 접수 시 `sendContactNotification()` — 문의 내용 임베드 (fire-and-forget)
+- 웹훅 URL 미설정 시 무시 (기능 비활성)
+- env: `DISCORD_ORDER_WEBHOOK_URL`, `DISCORD_CONTACT_WEBHOOK_URL`
+
+## 문의하기 (Contact)
+
+- **백엔드**: `POST /contact` (공개, rate limit 분당 5회) → DB 저장 + 디스코드 알림
+- **백엔드**: `GET /contact` (AdminGuard) → 문의 목록 조회
+- **프론트엔드**: `/contact` 페이지 (이름, 이메일, 전화번호?, 메시지)
+- **프론트엔드**: `/admin/contacts` 페이지 (Admin 문의 관리 목록)
+- 헤더 네비게이션에 "문의하기" 링크 포함
+- Admin 사이드바에 "문의 관리" 링크 포함
+
 ## 다음 단계 (추후 고도화)
-- 디스코드 웹훅 알림 (주문 + 문의)
-- Contact 페이지 (문의 폼 + 디스코드 알림)
 - 토스페이먼츠 결제 연동
 - Mac Mini 홈서버 배포 (Caddy 리버스 프록시 + SSL)

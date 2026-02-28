@@ -77,6 +77,15 @@ enum DiscountType {
   FIXED
 }
 
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  message   String
+  createdAt DateTime @default(now())
+}
+
 model Admin {
   id             String    @id @default(cuid())
   username       String    @unique

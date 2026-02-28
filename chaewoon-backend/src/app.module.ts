@@ -8,6 +8,7 @@ import { OrdersModule } from "./orders/orders.module";
 import { CouponsModule } from "./coupons/coupons.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { UploadsModule } from "./uploads/uploads.module";
+import { ContactModule } from "./contact/contact.module";
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { UploadsModule } from "./uploads/uploads.module";
     CouponsModule,
     AnalyticsModule,
     UploadsModule,
+    ContactModule,
   ],
   providers: [
     {

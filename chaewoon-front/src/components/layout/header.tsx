@@ -16,6 +16,7 @@ export function Header() {
 
   const navLinks = [
     { href: "/products", label: "작품 보기" },
+    { href: "/contact", label: "문의하기" },
     { href: "/wishlist", label: "위시리스트" },
   ];
 

@@ -10,4 +10,5 @@ export type {
   OrderStatusDist,
   TopProduct,
   CouponValidation,
+  ContactMessage,
 } from "chaewoon-shared";

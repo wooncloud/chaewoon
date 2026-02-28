@@ -12,6 +12,7 @@ export type {
   OrderStatusDist,
   TopProduct,
   CouponValidation,
+  ContactMessage,
 } from "./types";
 
 export { ORDER_STATUS_VALUES, DISCOUNT_TYPE_VALUES } from "./types";

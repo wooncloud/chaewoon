@@ -5,11 +5,15 @@ import {
 } from "@nestjs/common";
 import type { OrderStatus } from "chaewoon-shared";
 import { PrismaService } from "../prisma/prisma.service";
+import { DiscordService } from "../common/discord.service";
 import { CreateOrderDto } from "./orders.dto";
 
 @Injectable()
 export class OrdersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private discord: DiscordService,
+  ) {}
 
   async findAll(status?: string) {
     const where = status
@@ -42,7 +46,7 @@ export class OrdersService {
 
   async create(dto: CreateOrderDto) {
     // Transaction: check product not sold, create order, mark as sold
-    return this.prisma.$transaction(async (tx) => {
+    const order = await this.prisma.$transaction(async (tx) => {
       const product = await tx.product.findUnique({
         where: { id: dto.productId },
       });
@@ -54,7 +58,7 @@ export class OrdersService {
         throw new BadRequestException("이미 판매 완료된 작품입니다.");
       }
 
-      const order = await tx.order.create({
+      const created = await tx.order.create({
         data: {
           subtotal: dto.subtotal,
           couponDiscount: dto.couponDiscount ?? 0,
@@ -84,8 +88,13 @@ export class OrdersService {
         data: { sold: true },
       });
 
-      return order;
+      return created;
     });
+
+    // 디스코드 알림 (fire-and-forget)
+    this.discord.sendOrderNotification(order).catch(() => {});
+
+    return order;
   }
 
   async updateStatus(id: string, status: string) {

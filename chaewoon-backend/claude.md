@@ -18,14 +18,15 @@ NestJS 11 백엔드 API 서버. Prisma ORM + PostgreSQL 16.
 ```
 chaewoon-backend/
 ├── prisma/
-│   ├── schema.prisma          # DB 스키마 (Product, Order, OrderItem, Coupon, Admin)
+│   ├── schema.prisma          # DB 스키마 (Product, Order, OrderItem, Coupon, Admin, Contact)
 │   ├── migrations/            # Prisma 마이그레이션
 │   └── seed.ts                # 초기 데이터 (8 상품, 3 쿠폰, 8 주문)
 ├── src/
 │   ├── main.ts                # 엔트리포인트 (CORS, cookie-parser, static assets, ValidationPipe, HttpExceptionFilter)
-│   ├── app.module.ts          # 루트 모듈 (7개 모듈 + ThrottlerGuard)
+│   ├── app.module.ts          # 루트 모듈 (8개 모듈 + ThrottlerGuard)
 │   ├── common/
-│   │   └── http-exception.filter.ts  # 글로벌 예외 필터 (ApiErrorResponse 형태)
+│   │   ├── http-exception.filter.ts  # 글로벌 예외 필터 (ApiErrorResponse 형태)
+│   │   └── discord.service.ts        # Discord 웹훅 알림 (주문 + 문의)
 │   ├── auth/
 │   │   ├── auth.module.ts     # JwtModule 등록 (global, 24h)
 │   │   ├── auth.controller.ts # login, logout, me, setup, password
@@ -53,11 +54,16 @@ chaewoon-backend/
 │   ├── uploads/
 │   │   ├── uploads.module.ts
 │   │   └── uploads.controller.ts  # POST /uploads (multer, AdminGuard, 10MB, jpg/png/webp/gif)
+│   ├── contact/
+│   │   ├── contact.module.ts
+│   │   ├── contact.controller.ts  # POST /contact (공개) + GET /contact (🔒)
+│   │   ├── contact.service.ts     # DB CRUD (create, findAll)
+│   │   └── contact.dto.ts         # CreateContactDto
 │   └── analytics/
 │       ├── analytics.module.ts
 │       ├── analytics.controller.ts
 │       └── analytics.service.ts  # KPI, 월별 매출, 주문 상태, 인기 상품
-├── .env                       # DATABASE_URL, PORT, CORS_ORIGIN, JWT_SECRET, ADMIN_SETUP_KEY
+├── .env                       # DATABASE_URL, PORT, CORS_ORIGIN, JWT_SECRET, ADMIN_SETUP_KEY, DISCORD_*_WEBHOOK_URL
 ├── .env.example
 ├── Dockerfile                 # 멀티스테이지 빌드 (모노레포 루트 컨텍스트)
 ├── nest-cli.json
@@ -73,6 +79,7 @@ chaewoon-backend/
 - **Order**: id, items(OrderItem[]), subtotal, couponDiscount, total, couponCode?, status(OrderStatus), shipping 필드 5개, createdAt, updatedAt
 - **OrderItem**: id, orderId, productId, quantity (Order/Product cascade)
 - **Coupon**: id, code(unique), description, discountType(DiscountType), discountValue, minOrderAmount, maxDiscountAmount?, validFrom, validUntil, isActive, createdAt, updatedAt
+- **Contact**: id, name, email, phone?, message, createdAt
 - **Admin**: id, username(unique), passwordHash, failedAttempts, lockedUntil?, createdAt, updatedAt
 
 ### Enums
@@ -137,6 +144,11 @@ chaewoon-backend/
 
 정적 파일 서빙: `GET /uploads/:filename` — `main.ts`에서 `useStaticAssets` 설정
 
+### Contact `/contact`
+| Method | Path | 보호 | 설명 |
+|--------|------|------|------|
+| POST | `/contact` | — (rate limit 분당 5회) | 문의 접수 → 디스코드 웹훅 알림 |
+
 ### Analytics `/analytics` (전체 🔒)
 | Method | Path | 설명 |
 |--------|------|------|
@@ -191,7 +203,14 @@ chaewoon-backend/
 // 2. Order + OrderItem 생성
 // 3. product.sold = true 업데이트
 // → 동시 구매 시도의 race condition 방지
+// 트랜잭션 성공 후 디스코드 알림 (fire-and-forget)
 ```
+
+### 디스코드 웹훅 알림 (`common/discord.service.ts`)
+- `sendOrderNotification(order)` — 주문 접수 시 임베드 메시지 전송
+- `sendContactNotification(contact)` — 문의 접수 시 임베드 메시지 전송
+- 웹훅 URL이 없으면 무시 (env 미설정 시 기능 비활성)
+- 전송 실패해도 주문/문의 처리에 영향 없음 (fire-and-forget)
 
 ### 쿠폰 검증 (`coupons.service.ts`)
 - isActive 확인
