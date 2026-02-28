@@ -7,9 +7,11 @@ import {
   Param,
   Body,
   Query,
+  UseGuards,
 } from "@nestjs/common";
 import { ProductsService } from "./products.service";
 import { CreateProductDto, UpdateProductDto } from "./products.dto";
+import { AdminGuard } from "../auth/auth.guard";
 
 @Controller("products")
 export class ProductsController {
@@ -31,31 +33,37 @@ export class ProductsController {
   }
 
   @Post()
+  @UseGuards(AdminGuard)
   create(@Body() dto: CreateProductDto) {
     return this.productsService.create(dto);
   }
 
   @Patch(":id")
+  @UseGuards(AdminGuard)
   update(@Param("id") id: string, @Body() dto: UpdateProductDto) {
     return this.productsService.update(id, dto);
   }
 
   @Delete(":id")
+  @UseGuards(AdminGuard)
   remove(@Param("id") id: string) {
     return this.productsService.remove(id);
   }
 
   @Patch(":id/sold")
+  @UseGuards(AdminGuard)
   markAsSold(@Param("id") id: string) {
     return this.productsService.markAsSold(id);
   }
 
   @Patch(":id/toggle-published")
+  @UseGuards(AdminGuard)
   togglePublished(@Param("id") id: string) {
     return this.productsService.togglePublished(id);
   }
 
   @Patch(":id/toggle-featured")
+  @UseGuards(AdminGuard)
   toggleFeatured(@Param("id") id: string) {
     return this.productsService.toggleFeatured(id);
   }

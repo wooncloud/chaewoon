@@ -29,6 +29,7 @@ chaewoon-front/src/
 │   │   └── [id]/page.tsx           # 작품 상세 (썸네일 + 본문 갤러리, 바로 구매)
 │   ├── wishlist/page.tsx           # 위시리스트 (ID 기반, API에서 상품 정보 조회)
 │   ├── checkout/page.tsx           # 주문/결제 (쿼리 ?product=<id>, 쿠폰 적용)
+│   ├── login/page.tsx             # 관리자 로그인 (아이디/비밀번호)
 │   └── admin/
 │       ├── layout.tsx              # Admin 사이드바 레이아웃
 │       ├── page.tsx                # 대시보드 (KPI + 현황 + 최근 주문/판매)
@@ -62,6 +63,7 @@ chaewoon-front/src/
 │   └── wishlist.ts                 # Zustand persist — ids: string[] (ID만 저장)
 ├── types/
 │   └── index.ts                    # chaewoon-shared에서 re-export
+├── middleware.ts                   # /admin 라우트 보호 (JWT 쿠키 검증 → /login 리다이렉트)
 ├── next.config.ts                  # output: "standalone" (Docker용)
 ├── Dockerfile
 └── .env.local                      # NEXT_PUBLIC_API_URL=http://localhost:3849
@@ -77,8 +79,14 @@ chaewoon-front/src/
 - **`showSuccess(msg)`**: 초록 토스트 표시
 - 모든 API 페이지에서 catch → `showApiError()` / 성공 → `showSuccess()` 패턴 사용
 
+### 인증 관련
+- `credentials: 'include'` — 모든 요청에 쿠키 자동 전송
+- 401 응답 시 Admin 페이지에서 `/login`으로 자동 리다이렉트
+
 ### 주요 exports
-- **에러 헬퍼**: `ApiError`, `showApiError()`, `showSuccess()`
+- **인증**: `login()`, `logout()`, `getMe()`
+- **에러 헬퍼**: `ApiError`, `showApiError()`, `showSuccess()`, `toAbsoluteUrl()`
+- **업로드**: `uploadImage()`
 - **Products**: `fetchProducts()`, `fetchProduct()`, `createProduct()`, `updateProduct()`, `deleteProduct()`, `markProductSold()`, `toggleProductPublished()`, `toggleProductFeatured()`
 - **Orders**: `fetchOrders()`, `fetchOrder()`, `createOrder()`, `updateOrderStatus()`
 - **Coupons**: `fetchCoupons()`, `validateCoupon()`, `createCoupon()`, `updateCoupon()`, `deleteCoupon()`, `toggleCouponActive()`
@@ -90,6 +98,19 @@ chaewoon-front/src/
 - **`lib/toast-store.ts`**: Zustand 스토어 (persist 없음). `addToast(variant, message)` → 3초 후 자동 제거.
 - **`components/ui/toast.tsx`**: CVA 기반 토스트 컴포넌트. variant: `error` (빨강) / `success` (초록) / `info` (파랑).
 - **`components/layout/toast-container.tsx`**: 우상단 고정 위치에 토스트 목록 렌더. `layout.tsx`에 마운트됨.
+
+## Admin 인증 체계
+
+### 로그인 플로우
+1. `/admin` 접근 → `middleware.ts`가 쿠키 확인 → 없으면 `/login` 리다이렉트
+2. 로그인 폼 제출 → `POST /auth/login` (credentials: include) → 쿠키 설정
+3. 성공 → `/admin` 리다이렉트
+4. 이미 로그인된 상태에서 `/login` 접근 → `/admin` 리다이렉트
+
+### middleware.ts
+- `/admin/*` 경로: `GET /auth/me`로 토큰 유효성 확인
+- `/login` 경로: 이미 인증된 경우 `/admin`으로 리다이렉트
+- `matcher: ["/admin/:path*", "/login"]`
 
 ## 상태 관리 주의사항
 
@@ -106,7 +127,10 @@ chaewoon-front/src/
 - **thumbnail**: 카드/목록에 표시되는 대표 이미지 (1장)
 - **bodyImages**: 상세 페이지에서 스크롤하며 볼 수 있는 갤러리 이미지 (복수)
 - 이미지 없는 상품은 "彩" 플레이스홀더로 표시
-- Admin 폼에서 URL 입력, 미리보기, 순서 변경(↑↓), 추가/삭제 가능
+- Admin 폼에서 **파일 업로드** (multer) → 백엔드 `/uploads`에 저장 → URL 반환
+- 업로드된 이미지는 `/uploads/filename.jpg` 상대 경로로 저장, `toAbsoluteUrl()`로 절대 URL 변환
+- 고객 페이지(product-card, product detail, wishlist)에서도 `toAbsoluteUrl()` 적용
+- 썸네일/본문 이미지 순서 변경(↑↓), 삭제 가능
 
 ## 타입 정의 (`types/index.ts`)
 

@@ -27,6 +27,10 @@ services:
       DATABASE_URL: postgresql://postgres:postgres@db:5432/chaewoon?schema=public
       PORT: "3849"
       CORS_ORIGIN: http://localhost:3847
+      JWT_SECRET: ${JWT_SECRET:-chaewoon-docker-jwt-secret}
+      ADMIN_SETUP_KEY: ${ADMIN_SETUP_KEY:-chaewoon-docker-setup-key}
+    volumes:
+      - uploads:/app/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -40,8 +44,11 @@ services:
     restart: unless-stopped
     ports:
       - "3847:3847"
+    environment:
+      INTERNAL_API_URL: http://backend:3849
     depends_on:
       - backend
 
 volumes:
   pgdata:
+  uploads:

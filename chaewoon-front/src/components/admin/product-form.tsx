@@ -1,11 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Plus, X, ChevronUp, ChevronDown, ImageIcon } from "lucide-react";
+import {
+  Plus,
+  X,
+  ChevronUp,
+  ChevronDown,
+  ImageIcon,
+  Upload,
+  Loader2,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createProduct, updateProduct } from "@/lib/api";
+import {
+  createProduct,
+  updateProduct,
+  uploadImage,
+  showApiError,
+  toAbsoluteUrl,
+} from "@/lib/api";
 import { Product } from "@/types";
 
 interface ProductFormProps {
@@ -22,13 +36,18 @@ export function ProductForm({ product }: ProductFormProps) {
     price: product?.price ?? 0,
     tags: product?.tags.join(", ") ?? "",
     thumbnail: product?.thumbnail ?? "",
-    bodyImages: product?.bodyImages ?? [] as string[],
+    bodyImages: product?.bodyImages ?? ([] as string[]),
     featured: product?.featured ?? false,
     published: product?.published ?? false,
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadingThumbnail, setUploadingThumbnail] = useState(false);
+  const [uploadingBody, setUploadingBody] = useState(false);
+
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const bodyInputRef = useRef<HTMLInputElement>(null);
 
   const validate = () => {
     const newErrors: Record<string, string> = {};
@@ -38,6 +57,49 @@ export function ProductForm({ product }: ProductFormProps) {
     if (form.price <= 0) newErrors.price = "가격은 0보다 커야 합니다.";
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const handleThumbnailUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingThumbnail(true);
+    try {
+      const { url } = await uploadImage(file);
+      setForm((prev) => ({ ...prev, thumbnail: url }));
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setUploadingThumbnail(false);
+      if (thumbnailInputRef.current) thumbnailInputRef.current.value = "";
+    }
+  };
+
+  const handleBodyImagesUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setUploadingBody(true);
+    try {
+      const urls: string[] = [];
+      for (const file of Array.from(files)) {
+        const { url } = await uploadImage(file);
+        urls.push(url);
+      }
+      setForm((prev) => ({
+        ...prev,
+        bodyImages: [...prev.bodyImages, ...urls],
+      }));
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setUploadingBody(false);
+      if (bodyInputRef.current) bodyInputRef.current.value = "";
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -166,17 +228,44 @@ export function ProductForm({ product }: ProductFormProps) {
           {/* Thumbnail */}
           <div>
             <label className="mb-1.5 block text-sm text-muted">
-              썸네일 이미지 URL
+              썸네일 이미지
             </label>
-            <Input
-              placeholder="https://example.com/thumbnail.jpg"
-              value={form.thumbnail}
-              onChange={(e) => setForm({ ...form, thumbnail: e.target.value })}
-            />
+            <div className="flex gap-2">
+              <input
+                ref={thumbnailInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleThumbnailUpload}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={uploadingThumbnail}
+                onClick={() => thumbnailInputRef.current?.click()}
+              >
+                {uploadingThumbnail ? (
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Upload className="mr-1.5 h-3.5 w-3.5" />
+                )}
+                {uploadingThumbnail ? "업로드 중..." : "파일 선택"}
+              </Button>
+              {form.thumbnail && (
+                <button
+                  type="button"
+                  onClick={() => setForm({ ...form, thumbnail: "" })}
+                  className="rounded p-1.5 text-muted transition-colors hover:text-red-400"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
             {form.thumbnail.trim() && (
               <div className="mt-2 overflow-hidden rounded-lg border border-border">
                 <img
-                  src={form.thumbnail}
+                  src={toAbsoluteUrl(form.thumbnail)}
                   alt="썸네일 미리보기"
                   className="h-40 w-full object-cover"
                   onError={(e) => {
@@ -190,30 +279,22 @@ export function ProductForm({ product }: ProductFormProps) {
           {/* Body Images */}
           <div>
             <label className="mb-1.5 block text-sm text-muted">
-              본문 이미지 URL ({form.bodyImages.length}장)
+              본문 이미지 ({form.bodyImages.length}장)
             </label>
             <div className="space-y-2">
               {form.bodyImages.map((url, idx) => (
                 <div key={idx} className="flex items-start gap-2">
                   <span className="mt-2.5 text-xs text-muted">{idx + 1}</span>
                   <div className="flex-1">
-                    <Input
-                      placeholder="https://example.com/image.jpg"
-                      value={url}
-                      onChange={(e) => {
-                        const next = [...form.bodyImages];
-                        next[idx] = e.target.value;
-                        setForm({ ...form, bodyImages: next });
-                      }}
-                    />
                     {url.trim() && (
-                      <div className="mt-1 overflow-hidden rounded-lg border border-border">
+                      <div className="overflow-hidden rounded-lg border border-border">
                         <img
-                          src={url}
+                          src={toAbsoluteUrl(url)}
                           alt={`본문 이미지 ${idx + 1}`}
                           className="h-28 w-full object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).style.display = "none";
+                            (e.target as HTMLImageElement).style.display =
+                              "none";
                           }}
                         />
                       </div>
@@ -250,7 +331,9 @@ export function ProductForm({ product }: ProductFormProps) {
                     onClick={() => {
                       setForm({
                         ...form,
-                        bodyImages: form.bodyImages.filter((_, i) => i !== idx),
+                        bodyImages: form.bodyImages.filter(
+                          (_, i) => i !== idx,
+                        ),
                       });
                     }}
                     className="mt-2 rounded p-1 text-muted transition-colors hover:text-red-400"
@@ -260,16 +343,30 @@ export function ProductForm({ product }: ProductFormProps) {
                 </div>
               ))}
             </div>
-            <button
+
+            <input
+              ref={bodyInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleBodyImagesUpload}
+              className="hidden"
+            />
+            <Button
               type="button"
-              onClick={() =>
-                setForm({ ...form, bodyImages: [...form.bodyImages, ""] })
-              }
-              className="mt-2 inline-flex items-center gap-1.5 text-sm text-muted transition-colors hover:text-white"
+              variant="outline"
+              size="sm"
+              disabled={uploadingBody}
+              onClick={() => bodyInputRef.current?.click()}
+              className="mt-2"
             >
-              <Plus className="h-4 w-4" />
-              이미지 추가
-            </button>
+              {uploadingBody ? (
+                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+              )}
+              {uploadingBody ? "업로드 중..." : "이미지 추가"}
+            </Button>
           </div>
 
           {form.thumbnail === "" && form.bodyImages.length === 0 && (

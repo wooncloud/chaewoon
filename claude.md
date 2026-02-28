@@ -102,6 +102,8 @@ pnpm docker:logs    # 로그 확인
 - 프론트엔드는 workspace 환경에서 standalone 출력이 `chaewoon-front/server.js` 경로
 - DB 서비스에 `pg_isready` healthcheck 적용 → backend는 DB healthy 후 시작
 - 백엔드 컨테이너 시작 시 `prisma migrate deploy`가 자동 실행됨
+- 백엔드 `uploads` named volume으로 이미지 파일 영속화
+- 프론트엔드에 `INTERNAL_API_URL=http://backend:3849` 환경변수 (middleware 서버사이드 호출용)
 
 ## 환경변수
 
@@ -110,6 +112,8 @@ pnpm docker:logs    # 로그 확인
 | `DATABASE_URL` | backend `.env` | `postgresql://postgres:postgres@localhost:5432/chaewoon?schema=public` |
 | `PORT` | backend `.env` | `3849` |
 | `CORS_ORIGIN` | backend `.env` | `http://localhost:3847` |
+| `JWT_SECRET` | backend `.env` | JWT 서명 키 |
+| `ADMIN_SETUP_KEY` | backend `.env` | 계정 관리 API 헤더 키 |
 | `NEXT_PUBLIC_API_URL` | frontend `.env.local` | `http://localhost:3849` |
 
 ## 공유 패키지 (`chaewoon-shared`)
@@ -127,6 +131,25 @@ pnpm docker:logs    # 로그 확인
 2. `pnpm build:shared` 실행 (또는 `pnpm build`가 자동으로 shared 먼저 빌드)
 3. 프론트엔드 `types/index.ts`는 shared에서 re-export하므로 자동 반영
 4. 백엔드 DTO에서 shared의 enum 값 배열 사용 (`ORDER_STATUS_VALUES`, `DISCOUNT_TYPE_VALUES`)
+
+## Admin 인증 체계
+
+### 인증 플로우
+```
+브라우저 /admin 접근 → middleware.ts (쿠키 확인) → GET /auth/me → 인증 실패 시 /login 리다이렉트
+                                                              → 인증 성공 시 Admin 페이지 렌더
+```
+
+- **JWT 기반**: httpOnly 쿠키 (`admin_token`), 24시간 유효
+- **계정 잠금**: 5회 연속 실패 → 30분 잠금
+- **Rate Limiting**: `@nestjs/throttler` — 전역 분당 60회, 로그인 분당 10회
+- **계정 관리**: Postman으로 `X-Admin-Secret` 헤더와 함께 요청 (POST /auth/setup, PATCH /auth/password)
+
+### Admin 전용 라우트 (AdminGuard)
+- Products: POST, PATCH, DELETE (GET은 공개)
+- Orders: GET, PATCH (POST /orders는 고객용 → 공개)
+- Coupons: 전체 CRUD (GET /coupons/validate만 공개)
+- Analytics: 전체
 
 ## 에러 처리 체계
 
@@ -151,6 +174,7 @@ NestJS 예외 발생 → HttpExceptionFilter → ApiErrorResponse 형태로 응�
 - 프론트엔드 API 클라이언트(`api.ts`)와 백엔드 컨트롤러/DTO가 일치하는지 확인
 
 ### 3. 보안/접근 제어
+- Admin API가 AdminGuard로 보호되는지 확인 (쿠키 없이 401 응답)
 - 비공개(`published=false`) 상품이 고객 사이트에 노출되지 않는지 확인
 - URL 직접 접근으로 비공개 리소스에 접근 불가한지 확인
 
@@ -195,9 +219,16 @@ NestJS 예외 발생 → HttpExceptionFilter → ApiErrorResponse 형태로 응�
 - Admin 영역과 고객 사이트는 `ClientLayout`을 통해 Header/Footer 조건부 렌더링
 - 공통 타입은 `chaewoon-shared`에서 단일 소스로 관리 (프론트 `types/index.ts`는 re-export)
 
+## 이미지 업로드 시스템
+
+- **백엔드**: `POST /uploads` (AdminGuard, multer, 10MB, jpg/png/webp/gif)
+- **저장 경로**: `./uploads/` (Docker: named volume `/app/uploads`)
+- **정적 서빙**: `main.ts`의 `useStaticAssets` → `GET /uploads/:filename`
+- **프론트엔드**: `uploadImage()` → FormData 전송, `toAbsoluteUrl()` → 상대 경로를 절대 URL로 변환
+- **ProductForm**: 파일 선택 버튼으로 업로드 (썸네일 1장, 본문 이미지 복수)
+
 ## 다음 단계 (추후 고도화)
-- NextAuth.js 인증 연동 (Admin 접근 제어)
-- 실제 결제 연동 (PG사)
-- 실제 상품 이미지 적용
-- 주문 알림 시스템
-- 이미지 업로드 (현재 URL 입력 방식)
+- 디스코드 웹훅 알림 (주문 + 문의)
+- Contact 페이지 (문의 폼 + 디스코드 알림)
+- 토스페이먼츠 결제 연동
+- Mac Mini 홈서버 배포 (Caddy 리버스 프록시 + SSL)

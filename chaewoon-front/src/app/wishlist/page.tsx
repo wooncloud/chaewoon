@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Trash2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWishlistStore } from "@/store/wishlist";
-import { fetchProduct } from "@/lib/api";
+import { fetchProduct, toAbsoluteUrl } from "@/lib/api";
 import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
@@ -101,7 +101,7 @@ export default function WishlistPage() {
                 >
                   {thumbnail ? (
                     <img
-                      src={thumbnail}
+                      src={toAbsoluteUrl(thumbnail)}
                       alt={name}
                       className="h-full w-full object-cover"
                     />

@@ -13,6 +13,12 @@ import { useToastStore } from "./toast-store";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3849";
 
+/** /uploads/... 같은 상대 경로를 절대 URL로 변환 */
+export function toAbsoluteUrl(url: string) {
+  if (!url) return url;
+  return url.startsWith("/") ? `${API_URL}${url}` : url;
+}
+
 // ─── Error Handling ───
 
 export class ApiError extends Error {
@@ -45,6 +51,7 @@ export function showSuccess(message: string) {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options?.headers,
@@ -52,9 +59,66 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
+    // 401 응답 시 로그인 페이지로 리다이렉트 (브라우저 환경에서만)
+    if (res.status === 401 && typeof window !== "undefined") {
+      const isAdminPage = window.location.pathname.startsWith("/admin");
+      if (isAdminPage) {
+        window.location.href = "/login";
+        throw new Error("인증이 만료되었습니다.");
+      }
+    }
+
     const body = await res.json().catch(() => ({
       statusCode: res.status,
       message: `API error: ${res.status}`,
+      timestamp: new Date().toISOString(),
+    }));
+    throw new ApiError(body as ApiErrorResponse);
+  }
+
+  return res.json();
+}
+
+// ─── Auth ───
+
+export function login(username: string, password: string) {
+  return request<{ success: boolean; admin: { id: string; username: string } }>(
+    "/auth/login",
+    {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    },
+  );
+}
+
+export function logout() {
+  return request<{ success: boolean }>("/auth/logout", { method: "POST" });
+}
+
+export function getMe() {
+  return request<{ id: string; username: string }>("/auth/me");
+}
+
+// ─── Uploads ───
+
+export async function uploadImage(file: File): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  const res = await fetch(`${API_URL}/uploads`, {
+    method: "POST",
+    credentials: "include",
+    body: formData,
+  });
+
+  if (!res.ok) {
+    if (res.status === 401 && typeof window !== "undefined") {
+      window.location.href = "/login";
+      throw new Error("인증이 만료되었습니다.");
+    }
+    const body = await res.json().catch(() => ({
+      statusCode: res.status,
+      message: `업로드 실패: ${res.status}`,
       timestamp: new Date().toISOString(),
     }));
     throw new ApiError(body as ApiErrorResponse);

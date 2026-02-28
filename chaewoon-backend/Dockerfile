@@ -38,6 +38,8 @@ WORKDIR /app
 COPY --from=builder /deploy ./
 COPY --from=builder /app/chaewoon-backend/dist ./dist
 
+RUN mkdir -p /app/uploads
+
 EXPOSE 3849
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]

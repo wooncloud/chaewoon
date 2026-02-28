@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
-import { fetchProduct } from "@/lib/api";
+import { fetchProduct, toAbsoluteUrl } from "@/lib/api";
 import { Product } from "@/types";
 
 export default function ProductDetailPage({
@@ -83,7 +83,7 @@ export default function ProductDetailPage({
           <div className="product-image-placeholder aspect-square overflow-hidden rounded-2xl border border-border">
             {product.thumbnail ? (
               <img
-                src={product.thumbnail}
+                src={toAbsoluteUrl(product.thumbnail)}
                 alt={product.name}
                 className="h-full w-full object-cover"
               />
@@ -195,7 +195,7 @@ export default function ProductDetailPage({
                 className="overflow-hidden rounded-2xl border border-border"
               >
                 <img
-                  src={src}
+                  src={toAbsoluteUrl(src)}
                   alt={`${product.name} 상세 이미지 ${idx + 1}`}
                   className="w-full"
                 />

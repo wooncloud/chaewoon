@@ -6,20 +6,24 @@ import {
   Param,
   Body,
   Query,
+  UseGuards,
 } from "@nestjs/common";
 import { OrdersService } from "./orders.service";
 import { CreateOrderDto, UpdateOrderStatusDto } from "./orders.dto";
+import { AdminGuard } from "../auth/auth.guard";
 
 @Controller("orders")
 export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Get()
+  @UseGuards(AdminGuard)
   findAll(@Query("status") status?: string) {
     return this.ordersService.findAll(status);
   }
 
   @Get(":id")
+  @UseGuards(AdminGuard)
   findOne(@Param("id") id: string) {
     return this.ordersService.findOne(id);
   }
@@ -30,6 +34,7 @@ export class OrdersController {
   }
 
   @Patch(":id/status")
+  @UseGuards(AdminGuard)
   updateStatus(@Param("id") id: string, @Body() dto: UpdateOrderStatusDto) {
     return this.ordersService.updateStatus(id, dto.status);
   }

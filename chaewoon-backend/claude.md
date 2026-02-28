@@ -7,6 +7,8 @@ NestJS 11 백엔드 API 서버. Prisma ORM + PostgreSQL 16.
 ## Tech Stack
 - **Framework**: NestJS 11 (Express)
 - **ORM**: Prisma 6 (PostgreSQL 16)
+- **Auth**: JWT (@nestjs/jwt) + bcryptjs + cookie-parser
+- **Rate Limiting**: @nestjs/throttler
 - **Validation**: class-validator + class-transformer
 - **Language**: TypeScript 5 (strict)
 - **공유 타입**: `chaewoon-shared` 워크스페이스 패키지에서 import
@@ -16,14 +18,20 @@ NestJS 11 백엔드 API 서버. Prisma ORM + PostgreSQL 16.
 ```
 chaewoon-backend/
 ├── prisma/
-│   ├── schema.prisma          # DB 스키마 (Product, Order, OrderItem, Coupon)
+│   ├── schema.prisma          # DB 스키마 (Product, Order, OrderItem, Coupon, Admin)
 │   ├── migrations/            # Prisma 마이그레이션
 │   └── seed.ts                # 초기 데이터 (8 상품, 3 쿠폰, 8 주문)
 ├── src/
-│   ├── main.ts                # 엔트리포인트 (CORS, ValidationPipe, HttpExceptionFilter, port)
-│   ├── app.module.ts          # 루트 모듈 (4개 모듈 import)
+│   ├── main.ts                # 엔트리포인트 (CORS, cookie-parser, static assets, ValidationPipe, HttpExceptionFilter)
+│   ├── app.module.ts          # 루트 모듈 (7개 모듈 + ThrottlerGuard)
 │   ├── common/
 │   │   └── http-exception.filter.ts  # 글로벌 예외 필터 (ApiErrorResponse 형태)
+│   ├── auth/
+│   │   ├── auth.module.ts     # JwtModule 등록 (global, 24h)
+│   │   ├── auth.controller.ts # login, logout, me, setup, password
+│   │   ├── auth.service.ts    # 인증 로직 + 계정 잠금
+│   │   ├── auth.guard.ts      # AdminGuard (쿠키 JWT 검증)
+│   │   └── auth.dto.ts        # LoginDto, SetupDto, ChangePasswordDto
 │   ├── prisma/
 │   │   ├── prisma.service.ts  # PrismaClient 확장 (lifecycle hooks)
 │   │   └── prisma.module.ts   # 글로벌 모듈 (isGlobal: true)
@@ -42,11 +50,14 @@ chaewoon-backend/
 │   │   ├── coupons.controller.ts
 │   │   ├── coupons.service.ts # validate() — 쿠폰 검증/할인 계산
 │   │   └── coupons.dto.ts
+│   ├── uploads/
+│   │   ├── uploads.module.ts
+│   │   └── uploads.controller.ts  # POST /uploads (multer, AdminGuard, 10MB, jpg/png/webp/gif)
 │   └── analytics/
 │       ├── analytics.module.ts
 │       ├── analytics.controller.ts
 │       └── analytics.service.ts  # KPI, 월별 매출, 주문 상태, 인기 상품
-├── .env                       # DATABASE_URL, PORT=3849, CORS_ORIGIN
+├── .env                       # DATABASE_URL, PORT, CORS_ORIGIN, JWT_SECRET, ADMIN_SETUP_KEY
 ├── .env.example
 ├── Dockerfile                 # 멀티스테이지 빌드 (모노레포 루트 컨텍스트)
 ├── nest-cli.json
@@ -62,6 +73,7 @@ chaewoon-backend/
 - **Order**: id, items(OrderItem[]), subtotal, couponDiscount, total, couponCode?, status(OrderStatus), shipping 필드 5개, createdAt, updatedAt
 - **OrderItem**: id, orderId, productId, quantity (Order/Product cascade)
 - **Coupon**: id, code(unique), description, discountType(DiscountType), discountValue, minOrderAmount, maxDiscountAmount?, validFrom, validUntil, isActive, createdAt, updatedAt
+- **Admin**: id, username(unique), passwordHash, failedAttempts, lockedUntil?, createdAt, updatedAt
 
 ### Enums
 - **OrderStatus**: `PENDING | CONFIRMED | SHIPPING | DELIVERED | CANCELLED`
@@ -76,43 +88,81 @@ chaewoon-backend/
 
 ## API 엔드포인트
 
+> 🔒 = AdminGuard (JWT 쿠키 필요), 🔑 = X-Admin-Secret 헤더 필요
+
+### Auth `/auth`
+| Method | Path | 보호 | 설명 |
+|--------|------|------|------|
+| POST | `/auth/login` | rate limit | 로그인 → JWT 쿠키 설정 |
+| POST | `/auth/logout` | — | 쿠키 삭제 |
+| GET | `/auth/me` | 🔒 | 현재 로그인 정보 |
+| POST | `/auth/setup` | 🔑 | 관리자 계정 생성 (Postman용) |
+| PATCH | `/auth/password` | 🔑 | 비밀번호 변경 (Postman용) |
+
 ### Products `/products`
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/products` | 목록 (쿼리: `search`, `sold`, `published`, `featured`) |
-| GET | `/products/:id` | 상세 |
-| POST | `/products` | 생성 |
-| PATCH | `/products/:id` | 수정 |
-| DELETE | `/products/:id` | 삭제 |
-| PATCH | `/products/:id/sold` | 판매 완료 처리 |
-| PATCH | `/products/:id/toggle-published` | 게시/비공개 토글 |
-| PATCH | `/products/:id/toggle-featured` | 추천 토글 |
+| Method | Path | 보호 | 설명 |
+|--------|------|------|------|
+| GET | `/products` | — | 목록 (쿼리: `search`, `sold`, `published`, `featured`) |
+| GET | `/products/:id` | — | 상세 |
+| POST | `/products` | 🔒 | 생성 |
+| PATCH | `/products/:id` | 🔒 | 수정 |
+| DELETE | `/products/:id` | 🔒 | 삭제 |
+| PATCH | `/products/:id/sold` | 🔒 | 판매 완료 처리 |
+| PATCH | `/products/:id/toggle-published` | 🔒 | 게시/비공개 토글 |
+| PATCH | `/products/:id/toggle-featured` | 🔒 | 추천 토글 |
 
 ### Orders `/orders`
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/orders` | 목록 (쿼리: `status`) |
-| GET | `/orders/:id` | 상세 (items.product include) |
-| POST | `/orders` | 생성 (**$transaction**: sold 확인 → 주문 생성 → markAsSold) |
-| PATCH | `/orders/:id/status` | 상태 변경 |
+| Method | Path | 보호 | 설명 |
+|--------|------|------|------|
+| GET | `/orders` | 🔒 | 목록 (쿼리: `status`) |
+| GET | `/orders/:id` | 🔒 | 상세 (items.product include) |
+| POST | `/orders` | — | 생성 (**$transaction**: sold 확인 → 주문 생성 → markAsSold) |
+| PATCH | `/orders/:id/status` | 🔒 | 상태 변경 |
 
 ### Coupons `/coupons`
-| Method | Path | 설명 |
-|--------|------|------|
-| GET | `/coupons` | 목록 |
-| GET | `/coupons/validate` | 검증 (쿼리: `code`, `amount`) → `{ valid, coupon, discount, finalAmount }` |
-| POST | `/coupons` | 생성 |
-| PATCH | `/coupons/:id` | 수정 |
-| DELETE | `/coupons/:id` | 삭제 |
-| PATCH | `/coupons/:id/toggle-active` | 활성/비활성 토글 |
+| Method | Path | 보호 | 설명 |
+|--------|------|------|------|
+| GET | `/coupons` | 🔒 | 목록 |
+| GET | `/coupons/validate` | — | 검증 (쿼리: `code`, `amount`) |
+| GET | `/coupons/:id` | 🔒 | 상세 |
+| POST | `/coupons` | 🔒 | 생성 |
+| PATCH | `/coupons/:id` | 🔒 | 수정 |
+| DELETE | `/coupons/:id` | 🔒 | 삭제 |
+| PATCH | `/coupons/:id/toggle-active` | 🔒 | 활성/비활성 토글 |
 
-### Analytics `/analytics`
+### Uploads `/uploads`
+| Method | Path | 보호 | 설명 |
+|--------|------|------|------|
+| POST | `/uploads` | 🔒 | 이미지 업로드 (multer, 10MB, jpg/png/webp/gif) → `{ url }` |
+
+정적 파일 서빙: `GET /uploads/:filename` — `main.ts`에서 `useStaticAssets` 설정
+
+### Analytics `/analytics` (전체 🔒)
 | Method | Path | 설명 |
 |--------|------|------|
 | GET | `/analytics/summary` | KPI (매출, 주문수, 평균, 판매/가용 수, 상품수, 쿠폰수) |
 | GET | `/analytics/monthly-revenue` | 월별 매출 `{ key, label, revenue }[]` |
 | GET | `/analytics/order-status` | 주문 상태 분포 `{ status, count }[]` |
 | GET | `/analytics/top-products` | 인기 상품 (쿼리: `limit`) `{ product, orderCount, totalQuantity }[]` |
+
+## Admin 인증 체계
+
+### 인증 플로우
+1. `POST /auth/login` → bcrypt 비밀번호 검증 → JWT 생성 → httpOnly 쿠키 설정
+2. 이후 요청에서 `AdminGuard`가 쿠키의 JWT 검증
+3. 실패 시 `UnauthorizedException` (401)
+
+### 보안 정책
+- **계정 잠금**: 5회 연속 실패 → `lockedUntil = now + 30분`
+- **Rate Limiting**: `@nestjs/throttler` — 전역 분당 60회, 로그인 분당 10회
+- **계정 관리**: `X-Admin-Secret` 헤더로 보호 (env `ADMIN_SETUP_KEY`)
+- **JWT**: httpOnly, secure(production), sameSite: lax, maxAge: 24h
+
+### AdminGuard 적용 범위
+- Products: POST, PATCH, DELETE (GET은 공개)
+- Orders: GET, PATCH (POST는 고객 주문용 → 공개)
+- Coupons: 전체 CRUD (GET /coupons/validate만 공개)
+- Analytics: 전체
 
 ## 글로벌 예외 필터 (`common/http-exception.filter.ts`)
 
