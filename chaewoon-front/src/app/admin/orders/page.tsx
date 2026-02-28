@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useIsMounted } from "@/lib/hooks";
 import { formatPrice } from "@/lib/utils";
-import { OrderStatus } from "@/types";
+import { OrderStatus, Order } from "@/types";
 import {
   ORDER_STATUS_LABELS as STATUS_LABELS,
   ORDER_STATUS_COLORS as STATUS_COLORS,
@@ -12,21 +12,25 @@ import {
 import {
   fetchOrders,
   updateOrderStatus,
-  ApiOrder,
+  showApiError,
+  showSuccess,
 } from "@/lib/api";
 
 export default function AdminOrdersPage() {
   const mounted = useIsMounted();
   const [statusFilter, setStatusFilter] = useState<OrderStatus | "all">("all");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
-  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadOrders = useCallback(() => {
     const status = statusFilter === "all" ? undefined : statusFilter;
     fetchOrders(status)
       .then(setOrders)
-      .catch(() => setOrders([]))
+      .catch((err) => {
+        showApiError(err);
+        setOrders([]);
+      })
       .finally(() => setLoading(false));
   }, [statusFilter]);
 
@@ -35,16 +39,20 @@ export default function AdminOrdersPage() {
   }, [loadOrders]);
 
   // We need all orders for count display, so also load them
-  const [allOrders, setAllOrders] = useState<ApiOrder[]>([]);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
   useEffect(() => {
-    fetchOrders().then(setAllOrders).catch(() => setAllOrders([]));
+    fetchOrders().then(setAllOrders).catch(() => {});
   }, []);
 
   const handleStatusChange = async (orderId: string, status: OrderStatus) => {
-    await updateOrderStatus(orderId, status);
-    loadOrders();
-    // also refresh counts
-    fetchOrders().then(setAllOrders).catch(() => {});
+    try {
+      await updateOrderStatus(orderId, status);
+      showSuccess("주문 상태가 변경되었습니다.");
+      loadOrders();
+      fetchOrders().then(setAllOrders).catch(() => {});
+    } catch (err) {
+      showApiError(err);
+    }
   };
 
   if (!mounted || loading) {

@@ -15,18 +15,17 @@ import {
   fetchAnalyticsSummary,
   fetchProducts,
   fetchOrders,
-  ApiProduct,
-  ApiOrder,
-  AnalyticsSummary,
+  showApiError,
 } from "@/lib/api";
+import { Product, Order, AnalyticsSummary } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
 
 export default function AdminDashboardPage() {
   const mounted = useIsMounted();
   const [summary, setSummary] = useState<AnalyticsSummary | null>(null);
-  const [products, setProducts] = useState<ApiProduct[]>([]);
-  const [orders, setOrders] = useState<ApiOrder[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,7 +39,7 @@ export default function AdminDashboardPage() {
         setProducts(p);
         setOrders(o);
       })
-      .catch(() => {})
+      .catch(showApiError)
       .finally(() => setLoading(false));
   }, []);
 

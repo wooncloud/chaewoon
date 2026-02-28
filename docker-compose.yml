@@ -10,11 +10,16 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
-      context: ./chaewoon-backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: chaewoon-backend/Dockerfile
     restart: unless-stopped
     ports:
       - "3849:3849"
@@ -23,12 +28,13 @@ services:
       PORT: "3849"
       CORS_ORIGIN: http://localhost:3847
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   frontend:
     build:
-      context: ./chaewoon-front
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: chaewoon-front/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:3849
     restart: unless-stopped

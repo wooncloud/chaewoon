@@ -19,8 +19,10 @@ import {
   deleteProduct,
   toggleProductPublished,
   toggleProductFeatured,
-  ApiProduct,
+  showApiError,
+  showSuccess,
 } from "@/lib/api";
+import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
 
@@ -34,7 +36,7 @@ export default function AdminProductsPage() {
     "all" | "published" | "draft"
   >("all");
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   const loadProducts = useCallback(() => {
@@ -47,7 +49,10 @@ export default function AdminProductsPage() {
 
     fetchProducts(params)
       .then(setProducts)
-      .catch(() => setProducts([]))
+      .catch((err) => {
+        showApiError(err);
+        setProducts([]);
+      })
       .finally(() => setLoading(false));
   }, [search, soldFilter, publishedFilter]);
 
@@ -56,19 +61,32 @@ export default function AdminProductsPage() {
   }, [loadProducts]);
 
   const handleTogglePublished = async (id: string) => {
-    await toggleProductPublished(id);
-    loadProducts();
+    try {
+      await toggleProductPublished(id);
+      loadProducts();
+    } catch (err) {
+      showApiError(err);
+    }
   };
 
   const handleToggleFeatured = async (id: string) => {
-    await toggleProductFeatured(id);
-    loadProducts();
+    try {
+      await toggleProductFeatured(id);
+      loadProducts();
+    } catch (err) {
+      showApiError(err);
+    }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteProduct(id);
-    setDeleteConfirm(null);
-    loadProducts();
+    try {
+      await deleteProduct(id);
+      setDeleteConfirm(null);
+      showSuccess("작품이 삭제되었습니다.");
+      loadProducts();
+    } catch (err) {
+      showApiError(err);
+    }
   };
 
   if (!mounted || loading) {

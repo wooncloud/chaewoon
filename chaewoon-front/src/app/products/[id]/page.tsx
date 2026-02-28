@@ -10,7 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
-import { fetchProduct, ApiProduct } from "@/lib/api";
+import { fetchProduct } from "@/lib/api";
+import { Product } from "@/types";
 
 export default function ProductDetailPage({
   params,
@@ -21,7 +22,7 @@ export default function ProductDetailPage({
   const mounted = useIsMounted();
   const { addId, removeId, hasId } = useWishlistStore();
 
-  const [product, setProduct] = useState<ApiProduct | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFoundFlag, setNotFoundFlag] = useState(false);
 

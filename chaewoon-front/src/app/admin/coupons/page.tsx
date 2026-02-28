@@ -17,8 +17,10 @@ import {
   updateCoupon,
   deleteCoupon,
   toggleCouponActive,
-  ApiCoupon,
+  showApiError,
+  showSuccess,
 } from "@/lib/api";
+import { Coupon } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
 
@@ -52,14 +54,17 @@ export default function AdminCouponsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<CouponFormData>(emptyCoupon);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
-  const [coupons, setCoupons] = useState<ApiCoupon[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const loadCoupons = () => {
     fetchCoupons()
       .then(setCoupons)
-      .catch(() => setCoupons([]))
+      .catch((err) => {
+        showApiError(err);
+        setCoupons([]);
+      })
       .finally(() => setLoading(false));
   };
 
@@ -77,7 +82,7 @@ export default function AdminCouponsPage() {
     setShowForm(true);
   };
 
-  const openEdit = (coupon: ApiCoupon) => {
+  const openEdit = (coupon: Coupon) => {
     setForm({
       code: coupon.code,
       description: coupon.description,
@@ -129,23 +134,33 @@ export default function AdminCouponsPage() {
       setShowForm(false);
       setEditingId(null);
       setForm(emptyCoupon);
+      showSuccess(editingId ? "쿠폰이 수정되었습니다." : "쿠폰이 등록되었습니다.");
       loadCoupons();
-    } catch {
-      // silently handle for now
+    } catch (err) {
+      showApiError(err);
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: string) => {
-    await deleteCoupon(id);
-    setDeleteConfirm(null);
-    loadCoupons();
+    try {
+      await deleteCoupon(id);
+      setDeleteConfirm(null);
+      showSuccess("쿠폰이 삭제되었습니다.");
+      loadCoupons();
+    } catch (err) {
+      showApiError(err);
+    }
   };
 
   const handleToggleActive = async (id: string) => {
-    await toggleCouponActive(id);
-    loadCoupons();
+    try {
+      await toggleCouponActive(id);
+      loadCoupons();
+    } catch (err) {
+      showApiError(err);
+    }
   };
 
   return (

@@ -1,4 +1,5 @@
 import { IsString, IsInt, IsOptional, IsEnum, Min } from "class-validator";
+import { ORDER_STATUS_VALUES, type OrderStatus } from "chaewoon-shared";
 
 export class CreateOrderDto {
   @IsString()
@@ -39,6 +40,6 @@ export class CreateOrderDto {
 }
 
 export class UpdateOrderStatusDto {
-  @IsEnum(["PENDING", "CONFIRMED", "SHIPPING", "DELIVERED", "CANCELLED"])
-  status: string;
+  @IsEnum(ORDER_STATUS_VALUES)
+  status: OrderStatus;
 }

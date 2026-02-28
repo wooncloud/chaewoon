@@ -3,7 +3,6 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
-import { DiscountType } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateCouponDto, UpdateCouponDto } from "./coupons.dto";
 
@@ -26,7 +25,7 @@ export class CouponsService {
       data: {
         code: dto.code,
         description: dto.description,
-        discountType: dto.discountType as DiscountType,
+        discountType: dto.discountType,
         discountValue: dto.discountValue,
         minOrderAmount: dto.minOrderAmount ?? 0,
         maxDiscountAmount: dto.maxDiscountAmount,
@@ -40,7 +39,7 @@ export class CouponsService {
   async update(id: string, dto: UpdateCouponDto) {
     await this.findOne(id);
     const data: Record<string, unknown> = { ...dto };
-    if (dto.discountType) data.discountType = dto.discountType as DiscountType;
+    if (dto.discountType) data.discountType = dto.discountType;
     if (dto.validFrom) data.validFrom = new Date(dto.validFrom);
     if (dto.validUntil) data.validUntil = new Date(dto.validUntil);
     return this.prisma.coupon.update({ where: { id }, data });

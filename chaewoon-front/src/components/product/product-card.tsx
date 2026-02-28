@@ -4,10 +4,10 @@ import Link from "next/link";
 import { Heart } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { useWishlistStore } from "@/store/wishlist";
-import { ApiProduct } from "@/lib/api";
+import { Product } from "@/types";
 
 interface ProductCardProps {
-  product: ApiProduct;
+  product: Product;
 }
 
 export function ProductCard({ product }: ProductCardProps) {

@@ -5,9 +5,14 @@
     "dev": "pnpm -r --parallel dev",
     "dev:front": "pnpm --filter chaewoon-front dev",
     "dev:backend": "pnpm --filter chaewoon-backend start:dev",
-    "build": "pnpm -r build",
+    "build": "pnpm --filter chaewoon-shared build && pnpm --filter chaewoon-front --filter chaewoon-backend build",
+    "build:shared": "pnpm --filter chaewoon-shared build",
     "build:front": "pnpm --filter chaewoon-front build",
-    "build:backend": "pnpm --filter chaewoon-backend build"
+    "build:backend": "pnpm --filter chaewoon-backend build",
+    "docker:up": "docker compose up --build",
+    "docker:up:d": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

@@ -3,7 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
 } from "@nestjs/common";
-import { OrderStatus } from "@prisma/client";
+import type { OrderStatus } from "chaewoon-shared";
 import { PrismaService } from "../prisma/prisma.service";
 import { CreateOrderDto } from "./orders.dto";
 

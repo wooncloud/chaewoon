@@ -6,13 +6,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Heart, Trash2, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useWishlistStore } from "@/store/wishlist";
-import { fetchProduct, ApiProduct } from "@/lib/api";
+import { fetchProduct } from "@/lib/api";
+import { Product } from "@/types";
 import { formatPrice } from "@/lib/utils";
 import { useIsMounted } from "@/lib/hooks";
 
 interface WishlistItem {
   id: string;
-  product: ApiProduct | null; // null means deleted / not found
+  product: Product | null; // null means deleted / not found
 }
 
 export default function WishlistPage() {

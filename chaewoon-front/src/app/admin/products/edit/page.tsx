@@ -5,14 +5,15 @@ import { useSearchParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 import { ProductForm } from "@/components/admin/product-form";
-import { fetchProduct, ApiProduct } from "@/lib/api";
+import { fetchProduct } from "@/lib/api";
+import { Product } from "@/types";
 
 function EditProductContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const id = searchParams.get("id");
 
-  const [product, setProduct] = useState<ApiProduct | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ClientLayout } from "@/components/layout/client-layout";
+import { ToastContainer } from "@/components/layout/toast-container";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -17,6 +18,7 @@ export default function RootLayout({
     <html lang="ko">
       <body className="antialiased">
         <ClientLayout>{children}</ClientLayout>
+        <ToastContainer />
       </body>
     </html>
   );

@@ -13,9 +13,8 @@ import {
   fetchProduct,
   createOrder,
   validateCoupon,
-  ApiProduct,
-  CouponValidation,
 } from "@/lib/api";
+import { Product, CouponValidation } from "@/types";
 
 function CheckoutContent() {
   const router = useRouter();
@@ -23,7 +22,7 @@ function CheckoutContent() {
   const productId = searchParams.get("product");
 
   const mounted = useIsMounted();
-  const [product, setProduct] = useState<ApiProduct | null>(null);
+  const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [orderComplete, setOrderComplete] = useState(false);

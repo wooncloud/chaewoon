@@ -6,12 +6,13 @@ import { motion } from "framer-motion";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProductCard } from "@/components/product/product-card";
-import { fetchProducts, ApiProduct } from "@/lib/api";
+import { fetchProducts } from "@/lib/api";
+import { Product } from "@/types";
 import { useIsMounted } from "@/lib/hooks";
 
 export default function HomePage() {
   const mounted = useIsMounted();
-  const [featuredProducts, setFeaturedProducts] = useState<ApiProduct[]>([]);
+  const [featuredProducts, setFeaturedProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

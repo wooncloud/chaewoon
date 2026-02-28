@@ -1,4 +1,46 @@
+import type {
+  ApiErrorResponse,
+  Product,
+  Order,
+  Coupon,
+  AnalyticsSummary,
+  MonthlyRevenue,
+  OrderStatusDist,
+  TopProduct,
+  CouponValidation,
+} from "chaewoon-shared";
+import { useToastStore } from "./toast-store";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3849";
+
+// ─── Error Handling ───
+
+export class ApiError extends Error {
+  statusCode: number;
+  errors?: string[];
+
+  constructor(res: ApiErrorResponse) {
+    super(res.message);
+    this.statusCode = res.statusCode;
+    this.errors = res.errors;
+  }
+}
+
+export function showApiError(err: unknown) {
+  const message =
+    err instanceof ApiError
+      ? err.message
+      : err instanceof Error
+        ? err.message
+        : "알 수 없는 오류가 발생했습니다.";
+  useToastStore.getState().addToast("error", message);
+}
+
+export function showSuccess(message: string) {
+  useToastStore.getState().addToast("success", message);
+}
+
+// ─── Request ───
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
@@ -10,29 +52,18 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   });
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.message || `API error: ${res.status}`);
+    const body = await res.json().catch(() => ({
+      statusCode: res.status,
+      message: `API error: ${res.status}`,
+      timestamp: new Date().toISOString(),
+    }));
+    throw new ApiError(body as ApiErrorResponse);
   }
 
   return res.json();
 }
 
 // ─── Products ───
-
-export interface ApiProduct {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  thumbnail: string;
-  bodyImages: string[];
-  tags: string[];
-  sold: boolean;
-  featured: boolean;
-  published: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
 
 export function fetchProducts(params?: {
   search?: string;
@@ -46,78 +77,56 @@ export function fetchProducts(params?: {
   if (params?.published) q.set("published", params.published);
   if (params?.featured) q.set("featured", params.featured);
   const qs = q.toString();
-  return request<ApiProduct[]>(`/products${qs ? `?${qs}` : ""}`);
+  return request<Product[]>(`/products${qs ? `?${qs}` : ""}`);
 }
 
 export function fetchProduct(id: string) {
-  return request<ApiProduct>(`/products/${id}`);
+  return request<Product>(`/products/${id}`);
 }
 
-export function createProduct(data: Omit<ApiProduct, "id" | "createdAt" | "updatedAt">) {
-  return request<ApiProduct>("/products", {
+export function createProduct(data: Omit<Product, "id" | "createdAt" | "updatedAt">) {
+  return request<Product>("/products", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export function updateProduct(id: string, data: Partial<ApiProduct>) {
-  return request<ApiProduct>(`/products/${id}`, {
+export function updateProduct(id: string, data: Partial<Product>) {
+  return request<Product>(`/products/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
 }
 
 export function deleteProduct(id: string) {
-  return request<ApiProduct>(`/products/${id}`, { method: "DELETE" });
+  return request<Product>(`/products/${id}`, { method: "DELETE" });
 }
 
 export function markProductSold(id: string) {
-  return request<ApiProduct>(`/products/${id}/sold`, { method: "PATCH" });
+  return request<Product>(`/products/${id}/sold`, { method: "PATCH" });
 }
 
 export function toggleProductPublished(id: string) {
-  return request<ApiProduct>(`/products/${id}/toggle-published`, {
+  return request<Product>(`/products/${id}/toggle-published`, {
     method: "PATCH",
   });
 }
 
 export function toggleProductFeatured(id: string) {
-  return request<ApiProduct>(`/products/${id}/toggle-featured`, {
+  return request<Product>(`/products/${id}/toggle-featured`, {
     method: "PATCH",
   });
 }
 
 // ─── Orders ───
 
-export interface ApiOrder {
-  id: string;
-  items: Array<{
-    id: string;
-    productId: string;
-    quantity: number;
-    product: ApiProduct;
-  }>;
-  subtotal: number;
-  couponDiscount: number;
-  total: number;
-  couponCode: string | null;
-  status: string;
-  shippingName: string;
-  shippingPhone: string;
-  shippingZipCode: string;
-  shippingAddress: string;
-  shippingDetail: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
 export function fetchOrders(status?: string) {
   const qs = status ? `?status=${status}` : "";
-  return request<ApiOrder[]>(`/orders${qs}`);
+  return request<Order[]>(`/orders${qs}`);
 }
 
 export function fetchOrder(id: string) {
-  return request<ApiOrder>(`/orders/${id}`);
+  return request<Order>(`/orders/${id}`);
 }
 
 export function createOrder(data: {
@@ -132,14 +141,14 @@ export function createOrder(data: {
   shippingAddress: string;
   shippingDetail?: string;
 }) {
-  return request<ApiOrder>("/orders", {
+  return request<Order>("/orders", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export function updateOrderStatus(id: string, status: string) {
-  return request<ApiOrder>(`/orders/${id}/status`, {
+  return request<Order>(`/orders/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
@@ -147,30 +156,8 @@ export function updateOrderStatus(id: string, status: string) {
 
 // ─── Coupons ───
 
-export interface ApiCoupon {
-  id: string;
-  code: string;
-  description: string;
-  discountType: "PERCENT" | "FIXED";
-  discountValue: number;
-  minOrderAmount: number;
-  maxDiscountAmount: number | null;
-  validFrom: string;
-  validUntil: string;
-  isActive: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface CouponValidation {
-  valid: boolean;
-  coupon: ApiCoupon;
-  discount: number;
-  finalAmount: number;
-}
-
 export function fetchCoupons() {
-  return request<ApiCoupon[]>("/coupons");
+  return request<Coupon[]>("/coupons");
 }
 
 export function validateCoupon(code: string, amount: number) {
@@ -179,58 +166,31 @@ export function validateCoupon(code: string, amount: number) {
   );
 }
 
-export function createCoupon(data: Omit<ApiCoupon, "id" | "createdAt" | "updatedAt">) {
-  return request<ApiCoupon>("/coupons", {
+export function createCoupon(data: Omit<Coupon, "id" | "createdAt" | "updatedAt">) {
+  return request<Coupon>("/coupons", {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export function updateCoupon(id: string, data: Partial<ApiCoupon>) {
-  return request<ApiCoupon>(`/coupons/${id}`, {
+export function updateCoupon(id: string, data: Partial<Coupon>) {
+  return request<Coupon>(`/coupons/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
 }
 
 export function deleteCoupon(id: string) {
-  return request<ApiCoupon>(`/coupons/${id}`, { method: "DELETE" });
+  return request<Coupon>(`/coupons/${id}`, { method: "DELETE" });
 }
 
 export function toggleCouponActive(id: string) {
-  return request<ApiCoupon>(`/coupons/${id}/toggle-active`, {
+  return request<Coupon>(`/coupons/${id}/toggle-active`, {
     method: "PATCH",
   });
 }
 
 // ─── Analytics ───
-
-export interface AnalyticsSummary {
-  totalRevenue: number;
-  totalOrders: number;
-  avgOrderAmount: number;
-  totalSold: number;
-  totalAvailable: number;
-  totalProducts: number;
-  totalCoupons: number;
-}
-
-export interface MonthlyRevenue {
-  key: string;
-  label: string;
-  revenue: number;
-}
-
-export interface OrderStatusDist {
-  status: string;
-  count: number;
-}
-
-export interface TopProduct {
-  product: ApiProduct;
-  orderCount: number;
-  totalQuantity: number;
-}
 
 export function fetchAnalyticsSummary() {
   return request<AnalyticsSummary>("/analytics/summary");

@@ -1,3 +1,5 @@
+export type { ApiErrorResponse } from "./error";
+
 export type {
   OrderStatus,
   DiscountType,
@@ -10,4 +12,6 @@ export type {
   OrderStatusDist,
   TopProduct,
   CouponValidation,
-} from "chaewoon-shared";
+} from "./types";
+
+export { ORDER_STATUS_VALUES, DISCOUNT_TYPE_VALUES } from "./types";

@@ -3,18 +3,22 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { ProductCard } from "@/components/product/product-card";
-import { fetchProducts, ApiProduct } from "@/lib/api";
+import { fetchProducts, showApiError } from "@/lib/api";
+import { Product } from "@/types";
 import { useIsMounted } from "@/lib/hooks";
 
 export default function ProductsPage() {
   const mounted = useIsMounted();
-  const [products, setProducts] = useState<ApiProduct[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetchProducts({ published: "true" })
       .then(setProducts)
-      .catch(() => setProducts([]))
+      .catch((err) => {
+        showApiError(err);
+        setProducts([]);
+      })
       .finally(() => setLoading(false));
   }, []);
 

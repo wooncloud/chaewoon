@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { Plus, X, ChevronUp, ChevronDown, ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { createProduct, updateProduct, ApiProduct } from "@/lib/api";
+import { createProduct, updateProduct } from "@/lib/api";
+import { Product } from "@/types";
 
 interface ProductFormProps {
-  product?: ApiProduct;
+  product?: Product;
 }
 
 export function ProductForm({ product }: ProductFormProps) {

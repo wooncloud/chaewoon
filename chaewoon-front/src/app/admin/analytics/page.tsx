@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { ORDER_STATUS_LABELS, ORDER_STATUS_HEX } from "@/lib/constants";
-import { OrderStatus } from "@/types";
+import { OrderStatus, AnalyticsSummary, MonthlyRevenue, OrderStatusDist, TopProduct } from "@/types";
 import { useIsMounted } from "@/lib/hooks";
 import { BarChart } from "@/components/admin/charts/bar-chart";
 import { MiniChart } from "@/components/admin/charts/mini-chart";
@@ -19,10 +19,7 @@ import {
   fetchMonthlyRevenue,
   fetchOrderStatusDistribution,
   fetchTopProducts,
-  AnalyticsSummary,
-  MonthlyRevenue,
-  OrderStatusDist,
-  TopProduct,
+  showApiError,
 } from "@/lib/api";
 
 export default function AnalyticsPage() {
@@ -46,7 +43,7 @@ export default function AnalyticsPage() {
         setOrderStatusData(os);
         setTopProducts(tp);
       })
-      .catch(() => {})
+      .catch(showApiError)
       .finally(() => setLoading(false));
   }, []);
 

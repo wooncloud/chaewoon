@@ -4,8 +4,10 @@ import {
   IsBoolean,
   IsOptional,
   IsEnum,
+  IsDateString,
   Min,
 } from "class-validator";
+import { DISCOUNT_TYPE_VALUES, type DiscountType } from "chaewoon-shared";
 
 export class CreateCouponDto {
   @IsString()
@@ -14,8 +16,8 @@ export class CreateCouponDto {
   @IsString()
   description: string;
 
-  @IsEnum(["PERCENT", "FIXED"])
-  discountType: string;
+  @IsEnum(DISCOUNT_TYPE_VALUES)
+  discountType: DiscountType;
 
   @IsInt()
   @Min(1)
@@ -30,10 +32,10 @@ export class CreateCouponDto {
   @IsInt()
   maxDiscountAmount?: number;
 
-  @IsString()
+  @IsDateString()
   validFrom: string;
 
-  @IsString()
+  @IsDateString()
   validUntil: string;
 
   @IsOptional()
@@ -51,8 +53,8 @@ export class UpdateCouponDto {
   description?: string;
 
   @IsOptional()
-  @IsEnum(["PERCENT", "FIXED"])
-  discountType?: string;
+  @IsEnum(DISCOUNT_TYPE_VALUES)
+  discountType?: DiscountType;
 
   @IsOptional()
   @IsInt()
@@ -69,11 +71,11 @@ export class UpdateCouponDto {
   maxDiscountAmount?: number;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   validFrom?: string;
 
   @IsOptional()
-  @IsString()
+  @IsDateString()
   validUntil?: string;
 
   @IsOptional()

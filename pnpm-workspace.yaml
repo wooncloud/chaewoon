@@ -1,4 +1,5 @@
 packages:
+  - chaewoon-shared
   - chaewoon-front
   - chaewoon-backend
 
