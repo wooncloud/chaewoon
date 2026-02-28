@@ -33,6 +33,16 @@ export class OrdersController {
     return this.ordersService.create(dto);
   }
 
+  @Get(":id/summary")
+  findSummary(@Param("id") id: string) {
+    return this.ordersService.findSummary(id);
+  }
+
+  @Post(":id/cancel")
+  cancel(@Param("id") id: string) {
+    return this.ordersService.cancel(id);
+  }
+
   @Patch(":id/status")
   @UseGuards(AdminGuard)
   updateStatus(@Param("id") id: string, @Body() dto: UpdateOrderStatusDto) {

@@ -23,7 +23,7 @@ chaewoon-backend/
 │   └── seed.ts                # 초기 데이터 (8 상품, 3 쿠폰, 8 주문)
 ├── src/
 │   ├── main.ts                # 엔트리포인트 (CORS, cookie-parser, static assets, ValidationPipe, HttpExceptionFilter)
-│   ├── app.module.ts          # 루트 모듈 (8개 모듈 + ThrottlerGuard)
+│   ├── app.module.ts          # 루트 모듈 (10개 모듈 + ThrottlerGuard)
 │   ├── common/
 │   │   ├── http-exception.filter.ts  # 글로벌 예외 필터 (ApiErrorResponse 형태)
 │   │   └── discord.service.ts        # Discord 웹훅 알림 (주문 + 문의)
@@ -59,11 +59,16 @@ chaewoon-backend/
 │   │   ├── contact.controller.ts  # POST /contact (공개) + GET /contact (🔒)
 │   │   ├── contact.service.ts     # DB CRUD (create, findAll)
 │   │   └── contact.dto.ts         # CreateContactDto
+│   ├── payments/
+│   │   ├── payments.module.ts
+│   │   ├── payments.controller.ts  # POST /payments/confirm (공개), POST /payments/:id/refund (🔒)
+│   │   ├── payments.service.ts     # 토스페이먼츠 결제 확인 + 환불 로직
+│   │   └── payments.dto.ts         # ConfirmPaymentDto 등
 │   └── analytics/
 │       ├── analytics.module.ts
 │       ├── analytics.controller.ts
 │       └── analytics.service.ts  # KPI, 월별 매출, 주문 상태, 인기 상품
-├── .env                       # DATABASE_URL, PORT, CORS_ORIGIN, JWT_SECRET, ADMIN_SETUP_KEY, DISCORD_*_WEBHOOK_URL
+├── .env                       # DATABASE_URL, PORT, CORS_ORIGIN, JWT_SECRET, ADMIN_SETUP_KEY, DISCORD_*_WEBHOOK_URL, TOSS_SECRET_KEY
 ├── .env.example
 ├── Dockerfile                 # 멀티스테이지 빌드 (모노레포 루트 컨텍스트)
 ├── nest-cli.json
@@ -76,7 +81,7 @@ chaewoon-backend/
 
 ### Models
 - **Product**: id, name, description, price(Int), thumbnail, bodyImages[], tags[], sold, featured, published, createdAt, updatedAt
-- **Order**: id, items(OrderItem[]), subtotal, couponDiscount, total, couponCode?, status(OrderStatus), shipping 필드 5개, createdAt, updatedAt
+- **Order**: id, items(OrderItem[]), subtotal, couponDiscount, total, couponCode?, status(OrderStatus), paymentKey?, paymentMethod?, paidAt?, shipping 필드 5개, createdAt, updatedAt
 - **OrderItem**: id, orderId, productId, quantity (Order/Product cascade)
 - **Coupon**: id, code(unique), description, discountType(DiscountType), discountValue, minOrderAmount, maxDiscountAmount?, validFrom, validUntil, isActive, createdAt, updatedAt
 - **Contact**: id, name, email, phone?, message, createdAt
@@ -123,8 +128,16 @@ chaewoon-backend/
 |--------|------|------|------|
 | GET | `/orders` | 🔒 | 목록 (쿼리: `status`) |
 | GET | `/orders/:id` | 🔒 | 상세 (items.product include) |
+| GET | `/orders/:id/summary` | — | 주문 요약 (결제 완료 페이지용) |
 | POST | `/orders` | — | 생성 (**$transaction**: sold 확인 → 주문 생성 → markAsSold) |
+| POST | `/orders/:id/cancel` | — | 주문 취소 (PENDING 상태만, 상품 sold 해제) |
 | PATCH | `/orders/:id/status` | 🔒 | 상태 변경 |
+
+### Payments `/payments`
+| Method | Path | 보호 | 설명 |
+|--------|------|------|------|
+| POST | `/payments/confirm` | — | 토스페이먼츠 결제 확인 (paymentKey 검증 → 주문 CONFIRMED + 디스코드 알림) |
+| POST | `/payments/:id/refund` | 🔒 | 결제 환불 (토스 API 취소 → 주문 CANCELLED + 상품 sold 해제) |
 
 ### Coupons `/coupons`
 | Method | Path | 보호 | 설명 |
@@ -152,7 +165,7 @@ chaewoon-backend/
 ### Analytics `/analytics` (전체 🔒)
 | Method | Path | 설명 |
 |--------|------|------|
-| GET | `/analytics/summary` | KPI (매출, 주문수, 평균, 판매/가용 수, 상품수, 쿠폰수) |
+| GET | `/analytics/summary` | KPI (매출, 주문수, 평균, 판매/가용 수, 상품수, 쿠폰수) — 매출은 CONFIRMED/SHIPPING/DELIVERED만 집계 |
 | GET | `/analytics/monthly-revenue` | 월별 매출 `{ key, label, revenue }[]` |
 | GET | `/analytics/order-status` | 주문 상태 분포 `{ status, count }[]` |
 | GET | `/analytics/top-products` | 인기 상품 (쿼리: `limit`) `{ product, orderCount, totalQuantity }[]` |
@@ -172,8 +185,9 @@ chaewoon-backend/
 
 ### AdminGuard 적용 범위
 - Products: POST, PATCH, DELETE (GET은 공개)
-- Orders: GET, PATCH (POST는 고객 주문용 → 공개)
+- Orders: GET, PATCH (POST /orders, POST /orders/:id/cancel, GET /orders/:id/summary는 공개)
 - Coupons: 전체 CRUD (GET /coupons/validate만 공개)
+- Payments: POST /payments/:id/refund (POST /payments/confirm은 공개)
 - Analytics: 전체
 
 ## 글로벌 예외 필터 (`common/http-exception.filter.ts`)
@@ -200,14 +214,27 @@ chaewoon-backend/
 ```typescript
 // Prisma $transaction 내에서:
 // 1. product.sold 확인 → 이미 sold면 throw
-// 2. Order + OrderItem 생성
+// 2. Order + OrderItem 생성 (PENDING 상태)
 // 3. product.sold = true 업데이트
 // → 동시 구매 시도의 race condition 방지
-// 트랜잭션 성공 후 디스코드 알림 (fire-and-forget)
+```
+
+### 결제 확인 (`payments.service.ts`)
+```typescript
+// 1. 토스페이먼츠 API로 paymentKey 검증 (POST /v1/payments/confirm)
+// 2. 주문 상태 PENDING → CONFIRMED 변경 + paymentKey/paymentMethod/paidAt 저장
+// 3. 디스코드 주문 알림 (fire-and-forget)
+```
+
+### 결제 환불 (`payments.service.ts`)
+```typescript
+// 1. 토스페이먼츠 API로 결제 취소 (POST /v1/payments/{paymentKey}/cancel)
+// 2. 주문 상태 → CANCELLED 변경
+// 3. 주문 상품 sold = false 해제
 ```
 
 ### 디스코드 웹훅 알림 (`common/discord.service.ts`)
-- `sendOrderNotification(order)` — 주문 접수 시 임베드 메시지 전송
+- `sendOrderNotification(order)` — 결제 확인(CONFIRMED) 시 임베드 메시지 전송
 - `sendContactNotification(contact)` — 문의 접수 시 임베드 메시지 전송
 - 웹훅 URL이 없으면 무시 (env 미설정 시 기능 비활성)
 - 전송 실패해도 주문/문의 처리에 영향 없음 (fire-and-forget)
@@ -241,6 +268,7 @@ pnpm start:prod
 - 상품 8개 (자개 공예 작품, 2개 판매 완료)
 - 쿠폰 3개: `WELCOME10` (10%), `CHAEWOON5000` (5,000원), `PREMIUM20` (20%)
 - 주문 8건 (PENDING, CONFIRMED, SHIPPING, DELIVERED, CANCELLED 다양한 상태)
+- CONFIRMED/SHIPPING/DELIVERED 주문에는 paymentKey, paymentMethod, paidAt 포함
 
 ## 빌드 참고
 - `tsconfig.build.json`에서 `prisma/` 디렉토리를 exclude — `prisma/seed.ts`가 `rootDir` 계산에 영향을 주어 `dist/src/main.js`로 빌드되는 것을 방지

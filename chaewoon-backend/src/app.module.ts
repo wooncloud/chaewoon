@@ -9,6 +9,7 @@ import { CouponsModule } from "./coupons/coupons.module";
 import { AnalyticsModule } from "./analytics/analytics.module";
 import { UploadsModule } from "./uploads/uploads.module";
 import { ContactModule } from "./contact/contact.module";
+import { PaymentsModule } from "./payments/payments.module";
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { ContactModule } from "./contact/contact.module";
     AnalyticsModule,
     UploadsModule,
     ContactModule,
+    PaymentsModule,
   ],
   providers: [
     {

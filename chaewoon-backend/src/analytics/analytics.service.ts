@@ -6,8 +6,9 @@ export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
   async getSummary() {
+    const paidStatuses = ["CONFIRMED", "SHIPPING", "DELIVERED"] as const;
     const orders = await this.prisma.order.findMany({
-      where: { status: { not: "CANCELLED" } },
+      where: { status: { in: [...paidStatuses] } },
     });
 
     const totalRevenue = orders.reduce((sum, o) => sum + o.total, 0);
@@ -37,7 +38,7 @@ export class AnalyticsService {
 
   async getMonthlyRevenue() {
     const orders = await this.prisma.order.findMany({
-      where: { status: { not: "CANCELLED" } },
+      where: { status: { in: ["CONFIRMED", "SHIPPING", "DELIVERED"] } },
       orderBy: { createdAt: "asc" },
     });
 

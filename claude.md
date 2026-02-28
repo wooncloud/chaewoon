@@ -31,7 +31,7 @@
 | 1:1 한정 상품 | 각 작품은 유일하며 판매 시 즉시 품절 (`sold: boolean`) |
 | 재고 없음 | 수량(stock) 개념 없이 판매 여부(sold)만 관리 |
 | 장바구니 없음 | 유일품 특성 → 위시리스트로 대체 |
-| 바로 구매 | 상품 상세 → "바로 구매" → 결제 페이지 (직접 구매 플로우) |
+| 바로 구매 | 상품 상세 → "바로 구매" → 결제 페이지 → 토스페이먼츠 결제 → 결제 완료 |
 | 원자적 주문 | 백엔드에서 Prisma `$transaction`으로 sold 확인 + 주문 생성 + markAsSold 원자적 처리 |
 
 ## 모노레포 구조
@@ -104,6 +104,7 @@ pnpm docker:logs    # 로그 확인
 - 백엔드 컨테이너 시작 시 `prisma migrate deploy`가 자동 실행됨
 - 백엔드 `uploads` named volume으로 이미지 파일 영속화
 - 프론트엔드에 `INTERNAL_API_URL=http://backend:3849` 환경변수 (middleware 서버사이드 호출용)
+- Docker Compose에서 `TOSS_SECRET_KEY` (backend env), `NEXT_PUBLIC_TOSS_CLIENT_KEY` (frontend build arg) 전달
 
 ## 환경변수
 
@@ -114,9 +115,11 @@ pnpm docker:logs    # 로그 확인
 | `CORS_ORIGIN` | backend `.env` | `http://localhost:3847` |
 | `JWT_SECRET` | backend `.env` | JWT 서명 키 |
 | `ADMIN_SETUP_KEY` | backend `.env` | 계정 관리 API 헤더 키 |
+| `TOSS_SECRET_KEY` | backend `.env` | 토스페이먼츠 시크릿 키 |
 | `DISCORD_ORDER_WEBHOOK_URL` | backend `.env` | 주문 알림 디스코드 웹훅 (선택) |
 | `DISCORD_CONTACT_WEBHOOK_URL` | backend `.env` | 문의 알림 디스코드 웹훅 (선택) |
 | `NEXT_PUBLIC_API_URL` | frontend `.env.local` | `http://localhost:3849` |
+| `NEXT_PUBLIC_TOSS_CLIENT_KEY` | frontend `.env.local` | 토스페이먼츠 클라이언트 키 |
 
 ## 공유 패키지 (`chaewoon-shared`)
 
@@ -150,8 +153,9 @@ pnpm docker:logs    # 로그 확인
 
 ### Admin 전용 라우트 (AdminGuard)
 - Products: POST, PATCH, DELETE (GET은 공개)
-- Orders: GET, PATCH (POST /orders는 고객용 → 공개)
+- Orders: GET, PATCH (POST /orders, POST /orders/:id/cancel, GET /orders/:id/summary는 공개)
 - Coupons: 전체 CRUD (GET /coupons/validate만 공개)
+- Payments: POST /payments/:id/refund (POST /payments/confirm은 공개)
 - Contact: GET (POST /contact는 고객용 → 공개)
 - Analytics: 전체
 
@@ -234,10 +238,20 @@ NestJS 예외 발생 → HttpExceptionFilter → ApiErrorResponse 형태로 응�
 ## 디스코드 웹훅 알림
 
 - **DiscordService** (`common/discord.service.ts`): 주문/문의 알림 전송
-- 주문 생성 시 `sendOrderNotification()` — 주문 정보 임베드 (fire-and-forget)
+- 결제 확인(CONFIRMED) 시 `sendOrderNotification()` — 주문 정보 임베드 (fire-and-forget)
 - 문의 접수 시 `sendContactNotification()` — 문의 내용 임베드 (fire-and-forget)
 - 웹훅 URL 미설정 시 무시 (기능 비활성)
 - env: `DISCORD_ORDER_WEBHOOK_URL`, `DISCORD_CONTACT_WEBHOOK_URL`
+
+## 토스페이먼츠 결제 연동
+
+- **결제 플로우**: 주문 생성(PENDING) → 토스 결제창 → 결제 성공 콜백 → 백엔드 결제 확인 → CONFIRMED
+- **프론트엔드**: `@tosspayments/tosspayments-sdk`로 결제창 호출, `/checkout/success`에서 결제 확인, `/checkout/fail`에서 주문 취소
+- **백엔드**: `POST /payments/confirm` — 토스 API로 paymentKey 검증 후 주문 확정 + 디스코드 알림
+- **환불**: Admin에서 `POST /payments/:id/refund` → 토스 결제 취소 API + 주문 CANCELLED + 상품 sold 해제
+- **Order 필드**: `paymentKey` (토스 결제 키), `paymentMethod` (카드/계좌이체 등), `paidAt` (결제 시각)
+- **매출 집계**: Analytics에서 CONFIRMED/SHIPPING/DELIVERED 상태만 매출로 집계 (PENDING 제외)
+- env: `TOSS_SECRET_KEY` (backend), `NEXT_PUBLIC_TOSS_CLIENT_KEY` (frontend)
 
 ## 문의하기 (Contact)
 
@@ -249,5 +263,4 @@ NestJS 예외 발생 → HttpExceptionFilter → ApiErrorResponse 형태로 응�
 - Admin 사이드바에 "문의 관리" 링크 포함
 
 ## 다음 단계 (추후 고도화)
-- 토스페이먼츠 결제 연동
 - Mac Mini 홈서버 배포 (Caddy 리버스 프록시 + SSL)

@@ -31,6 +31,9 @@ model Order {
   total           Int
   couponCode      String?
   status          OrderStatus @default(PENDING)
+  paymentKey      String?
+  paymentMethod   String?
+  paidAt          DateTime?
   shippingName    String
   shippingPhone   String
   shippingZipCode String

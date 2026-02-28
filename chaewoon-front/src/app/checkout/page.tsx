@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { motion } from "framer-motion";
-import { ChevronLeft, CreditCard, Check, Tag } from "lucide-react";
+import { ChevronLeft, CreditCard, Tag } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +12,7 @@ import {
   fetchProduct,
   createOrder,
   validateCoupon,
+  cancelOrder,
 } from "@/lib/api";
 import { Product, CouponValidation } from "@/types";
 
@@ -25,7 +25,6 @@ function CheckoutContent() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [orderComplete, setOrderComplete] = useState(false);
   const [orderError, setOrderError] = useState("");
   const [couponInput, setCouponInput] = useState("");
   const [couponValidation, setCouponValidation] =
@@ -38,6 +37,7 @@ function CheckoutContent() {
     address: "",
     addressDetail: "",
   });
+  const pendingOrderId = useRef<string | null>(null);
 
   // Load product from API
   useEffect(() => {
@@ -65,35 +65,12 @@ function CheckoutContent() {
     );
   }
 
-  if (!product && !orderComplete) {
+  if (!product) {
     router.push("/products");
     return null;
   }
 
-  if (orderComplete) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        className="flex min-h-[60vh] flex-col items-center justify-center gap-4 px-4"
-      >
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/20">
-          <Check className="h-8 w-8 text-green-400" />
-        </div>
-        <h1 className="text-2xl font-bold">주문이 완료되었습니다</h1>
-        <p className="text-center text-sm text-muted">
-          주문해 주셔서 감사합니다.
-          <br />
-          정성을 담아 준비하겠습니다.
-        </p>
-        <Link href="/products">
-          <Button variant="secondary">다른 작품 보기</Button>
-        </Link>
-      </motion.div>
-    );
-  }
-
-  const subtotal = product!.price;
+  const subtotal = product.price;
   const couponDiscount = couponValidation ? couponValidation.discount : 0;
   const total = Math.max(0, subtotal - couponDiscount);
   const shippingFee = subtotal >= 50000 ? 0 : 3000;
@@ -135,7 +112,8 @@ function CheckoutContent() {
     setOrderError("");
 
     try {
-      await createOrder({
+      // Step 1: 주문 생성 (상품 선점)
+      const order = await createOrder({
         productId: product.id,
         subtotal,
         couponDiscount,
@@ -147,11 +125,45 @@ function CheckoutContent() {
         shippingAddress: address.address,
         shippingDetail: address.addressDetail || undefined,
       });
-      setOrderComplete(true);
+
+      pendingOrderId.current = order.id;
+
+      // Step 2: 토스페이먼츠 SDK 로드 + 결제 요청
+      const clientKey = process.env.NEXT_PUBLIC_TOSS_CLIENT_KEY;
+      if (!clientKey) {
+        throw new Error("결제 서비스가 설정되지 않았습니다.");
+      }
+
+      const { loadTossPayments } = await import(
+        "@tosspayments/tosspayments-sdk"
+      );
+      const tossPayments = await loadTossPayments(clientKey);
+      const payment = tossPayments.payment({ customerKey: "ANONYMOUS" });
+
+      await payment.requestPayment({
+        method: "CARD",
+        amount: { currency: "KRW", value: order.total },
+        orderId: order.id,
+        orderName: product.name,
+        successUrl: `${window.location.origin}/checkout/success`,
+        failUrl: `${window.location.origin}/checkout/fail`,
+      });
+
+      // requestPayment가 성공하면 브라우저가 리다이렉트됨
+      // 아래 코드는 실행되지 않음
     } catch (err: unknown) {
+      // 토스 SDK 오류 또는 주문 생성 실패
       const message =
-        err instanceof Error ? err.message : "주문 처리 중 오류가 발생했습니다.";
+        err instanceof Error
+          ? err.message
+          : "결제 처리 중 오류가 발생했습니다.";
       setOrderError(message);
+
+      // 주문이 생성되었으나 결제가 시작되지 않은 경우 → 주문 취소
+      if (pendingOrderId.current) {
+        cancelOrder(pendingOrderId.current).catch(() => {});
+        pendingOrderId.current = null;
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -160,7 +172,7 @@ function CheckoutContent() {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <Link
-        href={`/products/${product!.id}`}
+        href={`/products/${product.id}`}
         className="mb-6 inline-flex items-center gap-1 text-sm text-muted transition-colors hover:text-foreground"
       >
         <ChevronLeft className="h-4 w-4" />
@@ -256,8 +268,8 @@ function CheckoutContent() {
             <div className="rounded-xl border border-border bg-card p-5">
               <h2 className="mb-4 text-lg font-bold">주문 작품</h2>
               <div className="flex items-center justify-between text-sm">
-                <span className="text-muted">{product!.name}</span>
-                <span>{formatPrice(product!.price)}</span>
+                <span className="text-muted">{product.name}</span>
+                <span>{formatPrice(product.price)}</span>
               </div>
             </div>
           </div>

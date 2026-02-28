@@ -29,6 +29,7 @@ services:
       CORS_ORIGIN: http://localhost:3847
       JWT_SECRET: ${JWT_SECRET:-chaewoon-docker-jwt-secret}
       ADMIN_SETUP_KEY: ${ADMIN_SETUP_KEY:-chaewoon-docker-setup-key}
+      TOSS_SECRET_KEY: ${TOSS_SECRET_KEY:-}
     volumes:
       - uploads:/app/uploads
     depends_on:
@@ -41,6 +42,7 @@ services:
       dockerfile: chaewoon-front/Dockerfile
       args:
         NEXT_PUBLIC_API_URL: http://localhost:3849
+        NEXT_PUBLIC_TOSS_CLIENT_KEY: ${NEXT_PUBLIC_TOSS_CLIENT_KEY:-}
     restart: unless-stopped
     ports:
       - "3847:3847"

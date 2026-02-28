@@ -12,6 +12,7 @@ import {
 import {
   fetchOrders,
   updateOrderStatus,
+  refundOrder,
   showApiError,
   showSuccess,
 } from "@/lib/api";
@@ -22,6 +23,7 @@ export default function AdminOrdersPage() {
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refunding, setRefunding] = useState<string | null>(null);
 
   const loadOrders = useCallback(() => {
     const status = statusFilter === "all" ? undefined : statusFilter;
@@ -52,6 +54,21 @@ export default function AdminOrdersPage() {
       fetchOrders().then(setAllOrders).catch(() => {});
     } catch (err) {
       showApiError(err);
+    }
+  };
+
+  const handleRefund = async (orderId: string) => {
+    if (!confirm("정말 환불 처리하시겠습니까?")) return;
+    setRefunding(orderId);
+    try {
+      await refundOrder(orderId);
+      showSuccess("환불이 완료되었습니다.");
+      loadOrders();
+      fetchOrders().then(setAllOrders).catch(() => {});
+    } catch (err) {
+      showApiError(err);
+    } finally {
+      setRefunding(null);
     }
   };
 
@@ -185,6 +202,27 @@ export default function AdminOrdersPage() {
                         <span>{formatPrice(order.total)}</span>
                       </div>
                     </div>
+
+                    {/* 결제 정보 */}
+                    {order.paymentKey && (
+                      <div className="mt-2 space-y-1 border-t border-border pt-2 text-xs">
+                        <h4 className="font-medium text-muted">결제 정보</h4>
+                        {order.paymentMethod && (
+                          <div className="flex justify-between">
+                            <span className="text-muted">결제 수단</span>
+                            <span>{order.paymentMethod}</span>
+                          </div>
+                        )}
+                        {order.paidAt && (
+                          <div className="flex justify-between">
+                            <span className="text-muted">결제 일시</span>
+                            <span>
+                              {new Date(order.paidAt).toLocaleString("ko-KR")}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* 배송 정보 + 상태 변경 */}
@@ -230,6 +268,21 @@ export default function AdminOrdersPage() {
                         ))}
                       </div>
                     </div>
+
+                    {/* 환불 버튼 */}
+                    {order.paymentKey && order.status !== "CANCELLED" && (
+                      <div className="mt-4">
+                        <button
+                          onClick={() => handleRefund(order.id)}
+                          disabled={refunding === order.id}
+                          className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-400 transition-colors hover:bg-red-500/20 disabled:opacity-50"
+                        >
+                          {refunding === order.id
+                            ? "환불 처리 중..."
+                            : "결제 환불"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

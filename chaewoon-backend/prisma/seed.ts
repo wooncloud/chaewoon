@@ -180,12 +180,15 @@ async function main() {
     status: "PENDING" | "CONFIRMED" | "SHIPPING" | "DELIVERED" | "CANCELLED";
     date: string;
     addrIdx: number;
+    paymentKey?: string;
+    paymentMethod?: string;
+    paidAt?: string;
   }> = [
-    { productIdx: 0, subtotal: 38000, couponDiscount: 0, total: 38000, status: "DELIVERED", date: "2025-01-20", addrIdx: 0 },
-    { productIdx: 1, subtotal: 42000, couponDiscount: 0, total: 42000, status: "DELIVERED", date: "2025-02-05", addrIdx: 1 },
-    { productIdx: 2, subtotal: 45000, couponDiscount: 4500, total: 40500, couponCode: "WELCOME10", status: "DELIVERED", date: "2025-03-14", addrIdx: 2 },
-    { productIdx: 3, subtotal: 48000, couponDiscount: 0, total: 48000, status: "SHIPPING", date: "2025-04-10", addrIdx: 3 },
-    { productIdx: 4, subtotal: 40000, couponDiscount: 5000, total: 35000, couponCode: "CHAEWOON5000", status: "CONFIRMED", date: "2025-05-20", addrIdx: 4 },
+    { productIdx: 0, subtotal: 38000, couponDiscount: 0, total: 38000, status: "DELIVERED", date: "2025-01-20", addrIdx: 0, paymentKey: "test_pk_delivered_1", paymentMethod: "카드", paidAt: "2025-01-20T10:00:00Z" },
+    { productIdx: 1, subtotal: 42000, couponDiscount: 0, total: 42000, status: "DELIVERED", date: "2025-02-05", addrIdx: 1, paymentKey: "test_pk_delivered_2", paymentMethod: "카드", paidAt: "2025-02-05T14:30:00Z" },
+    { productIdx: 2, subtotal: 45000, couponDiscount: 4500, total: 40500, couponCode: "WELCOME10", status: "DELIVERED", date: "2025-03-14", addrIdx: 2, paymentKey: "test_pk_delivered_3", paymentMethod: "계좌이체", paidAt: "2025-03-14T09:15:00Z" },
+    { productIdx: 3, subtotal: 48000, couponDiscount: 0, total: 48000, status: "SHIPPING", date: "2025-04-10", addrIdx: 3, paymentKey: "test_pk_shipping_1", paymentMethod: "카드", paidAt: "2025-04-10T16:00:00Z" },
+    { productIdx: 4, subtotal: 40000, couponDiscount: 5000, total: 35000, couponCode: "CHAEWOON5000", status: "CONFIRMED", date: "2025-05-20", addrIdx: 4, paymentKey: "test_pk_confirmed_1", paymentMethod: "카드", paidAt: "2025-05-20T11:45:00Z" },
     { productIdx: 5, subtotal: 43000, couponDiscount: 0, total: 43000, status: "PENDING", date: "2025-06-25", addrIdx: 5 },
     { productIdx: 6, subtotal: 55000, couponDiscount: 0, total: 55000, status: "PENDING", date: "2025-07-05", addrIdx: 6 },
     { productIdx: 2, subtotal: 45000, couponDiscount: 0, total: 45000, status: "CANCELLED", date: "2025-07-15", addrIdx: 7 },
@@ -206,6 +209,9 @@ async function main() {
         shippingAddress: addr.address,
         shippingDetail: addr.detail,
         createdAt: new Date(od.date),
+        paymentKey: od.paymentKey ?? null,
+        paymentMethod: od.paymentMethod ?? null,
+        paidAt: od.paidAt ? new Date(od.paidAt) : null,
         items: {
           create: {
             productId: products[od.productIdx].id,

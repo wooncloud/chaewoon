@@ -11,6 +11,7 @@ Next.js 16 프론트엔드. App Router + Turbopack. 다크 모드 기반 자개 
 - **Animation**: Framer Motion
 - **State**: Zustand (위시리스트 persist + 토스트 비persist)
 - **Charts**: SVG 기반 자체 구현 (BarChart, DonutChart, MiniChart)
+- **Payment**: @tosspayments/tosspayments-sdk
 - **Icons**: Lucide React
 - **Language**: TypeScript (strict)
 - **API**: REST 호출 (`src/lib/api.ts`)
@@ -28,7 +29,10 @@ chaewoon-front/src/
 │   │   ├── page.tsx                # 작품 목록 (published만 표시)
 │   │   └── [id]/page.tsx           # 작품 상세 (썸네일 + 본문 갤러리, 바로 구매)
 │   ├── wishlist/page.tsx           # 위시리스트 (ID 기반, API에서 상품 정보 조회)
-│   ├── checkout/page.tsx           # 주문/결제 (쿼리 ?product=<id>, 쿠폰 적용)
+│   ├── checkout/
+│   │   ├── page.tsx                # 주문/결제 (쿼리 ?product=<id>, 쿠폰 적용, 토스 결제 요청)
+│   │   ├── success/page.tsx        # 결제 성공 콜백 (confirmPayment → 주문 완료)
+│   │   └── fail/page.tsx           # 결제 실패 콜백 (cancelOrder → 상품 복구)
 │   ├── contact/page.tsx           # 문의하기 (이름, 이메일, 전화번호?, 메시지)
 │   ├── login/page.tsx             # 관리자 로그인 (아이디/비밀번호)
 │   └── admin/
@@ -38,7 +42,7 @@ chaewoon-front/src/
 │       │   ├── page.tsx            # 작품 목록 (검색, 필터, 게시/추천 토글)
 │       │   ├── new/page.tsx        # 작품 등록
 │       │   └── edit/page.tsx       # 작품 수정 (?id=<id>)
-│       ├── orders/page.tsx         # 주문 관리 (상태 필터, 상세 아코디언, 상태 변경)
+│       ├── orders/page.tsx         # 주문 관리 (상태 필터, 상세 아코디언, 상태 변경, 결제 정보 + 환불)
 │       ├── coupons/page.tsx        # 쿠폰 CRUD (인라인 폼, 활성 토글)
 │       ├── contacts/page.tsx      # 문의 관리 (목록 조회)
 │       └── analytics/page.tsx      # 매출 통계 (KPI, 차트)
@@ -68,7 +72,7 @@ chaewoon-front/src/
 ├── middleware.ts                   # /admin 라우트 보호 (JWT 쿠키 검증 → /login 리다이렉트)
 ├── next.config.ts                  # output: "standalone" (Docker용)
 ├── Dockerfile
-└── .env.local                      # NEXT_PUBLIC_API_URL=http://localhost:3849
+└── .env.local                      # NEXT_PUBLIC_API_URL, NEXT_PUBLIC_TOSS_CLIENT_KEY
 ```
 
 ## API 클라이언트 (`src/lib/api.ts`)
@@ -90,7 +94,8 @@ chaewoon-front/src/
 - **에러 헬퍼**: `ApiError`, `showApiError()`, `showSuccess()`, `toAbsoluteUrl()`
 - **업로드**: `uploadImage()`
 - **Products**: `fetchProducts()`, `fetchProduct()`, `createProduct()`, `updateProduct()`, `deleteProduct()`, `markProductSold()`, `toggleProductPublished()`, `toggleProductFeatured()`
-- **Orders**: `fetchOrders()`, `fetchOrder()`, `createOrder()`, `updateOrderStatus()`
+- **Orders**: `fetchOrders()`, `fetchOrder()`, `fetchOrderSummary()`, `createOrder()`, `cancelOrder()`, `updateOrderStatus()`
+- **Payments**: `confirmPayment()`, `refundOrder()`
 - **Coupons**: `fetchCoupons()`, `validateCoupon()`, `createCoupon()`, `updateCoupon()`, `deleteCoupon()`, `toggleCouponActive()`
 - **Contact**: `sendContact()`, `fetchContacts()`
 - **Analytics**: `fetchAnalyticsSummary()`, `fetchMonthlyRevenue()`, `fetchOrderStatusDistribution()`, `fetchTopProducts()`

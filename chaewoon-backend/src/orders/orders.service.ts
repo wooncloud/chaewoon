@@ -5,15 +5,11 @@ import {
 } from "@nestjs/common";
 import type { OrderStatus } from "chaewoon-shared";
 import { PrismaService } from "../prisma/prisma.service";
-import { DiscordService } from "../common/discord.service";
 import { CreateOrderDto } from "./orders.dto";
 
 @Injectable()
 export class OrdersService {
-  constructor(
-    private prisma: PrismaService,
-    private discord: DiscordService,
-  ) {}
+  constructor(private prisma: PrismaService) {}
 
   async findAll(status?: string) {
     const where = status
@@ -91,9 +87,58 @@ export class OrdersService {
       return created;
     });
 
-    // 디스코드 알림 (fire-and-forget)
-    this.discord.sendOrderNotification(order).catch(() => {});
+    return order;
+  }
 
+  async cancel(id: string) {
+    const order = await this.findOne(id);
+
+    if (order.status === "CANCELLED") {
+      throw new BadRequestException("이미 취소된 주문입니다.");
+    }
+
+    if (order.paymentKey) {
+      throw new BadRequestException(
+        "결제 완료된 주문은 환불 처리를 이용해주세요.",
+      );
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.order.update({
+        where: { id },
+        data: { status: "CANCELLED" },
+        include: { items: { include: { product: true } } },
+      });
+
+      for (const item of updated.items) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { sold: false },
+        });
+      }
+
+      return updated;
+    });
+  }
+
+  async findSummary(id: string) {
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        status: true,
+        total: true,
+        shippingName: true,
+        items: {
+          select: {
+            id: true,
+            quantity: true,
+            product: { select: { id: true, name: true, price: true } },
+          },
+        },
+      },
+    });
+    if (!order) throw new NotFoundException("주문을 찾을 수 없습니다.");
     return order;
   }
 

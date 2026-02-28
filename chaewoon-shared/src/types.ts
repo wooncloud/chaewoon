@@ -51,6 +51,9 @@ export interface Order {
   total: number;
   couponCode: string | null;
   status: OrderStatus;
+  paymentKey: string | null;
+  paymentMethod: string | null;
+  paidAt: string | null;
   shippingName: string;
   shippingPhone: string;
   shippingZipCode: string;

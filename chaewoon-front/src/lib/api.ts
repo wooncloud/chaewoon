@@ -212,11 +212,42 @@ export function createOrder(data: {
   });
 }
 
+export function cancelOrder(orderId: string) {
+  return request<Order>(`/orders/${orderId}/cancel`, { method: "POST" });
+}
+
+export function fetchOrderSummary(id: string) {
+  return request<{
+    id: string;
+    status: string;
+    total: number;
+    shippingName: string;
+    items: { id: string; quantity: number; product: { id: string; name: string; price: number } }[];
+  }>(`/orders/${id}/summary`);
+}
+
 export function updateOrderStatus(id: string, status: string) {
   return request<Order>(`/orders/${id}/status`, {
     method: "PATCH",
     body: JSON.stringify({ status }),
   });
+}
+
+// ─── Payments ───
+
+export function confirmPayment(data: {
+  paymentKey: string;
+  orderId: string;
+  amount: number;
+}) {
+  return request<Order>("/payments/confirm", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export function refundOrder(orderId: string) {
+  return request<Order>(`/payments/${orderId}/refund`, { method: "POST" });
 }
 
 // ─── Coupons ───
